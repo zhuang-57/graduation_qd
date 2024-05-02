@@ -3,7 +3,8 @@ import { reactive } from 'vue';
 import { getUserPowerMenus, DeleteUserMsg, updateUserList } from "../../api/users"
 import type { GetPage, UserCondition, GETPageList, UserPowerList, EditUserList, UserRoleCondition } from "../../api/users"
 import { FormInstance, FormRules } from 'element-plus';
-
+import type { RolesCondition } from '../../api/system'
+import { getSystemRole } from '../../api/system'
 //分页查询条件
 const page = reactive<GetPage>(
     {
@@ -13,6 +14,11 @@ const page = reactive<GetPage>(
 )
 const getPageQuery = reactive<UserCondition>({
     likeUserName: '',
+    page
+})
+
+const getRolePageQuery = reactive<RolesCondition>({
+    likeRoleName: '',
     page
 })
 
@@ -71,10 +77,26 @@ const updateUserReq = reactive<UserRoleCondition>({
 })
 
 //编辑用户角色信息
+
+//获取角色信息
+interface ListItem {
+    label: string
+    value: string
+}
+
+const UserRoleOption = ref<ListItem[]>([])
 const handleEditUser = async (id: number) => {
     updateVisible.value = true;
     const getUserItem = UserMenus.value.find((item) => item.id === id)
     Object.assign(updateUserForm, getUserItem);
+
+    //获取角色信息
+    const { data } = await getSystemRole(getRolePageQuery);
+    if (data.code === 0) {
+        UserRoleOption.value = data.data.data.map((item) => {
+            return { label: item.rolesName, value: item.id }
+        })
+    }
 }
 
 //重置内容
@@ -84,15 +106,12 @@ const resetContent = async () => {
     }
 }
 
-//选择角色Id
-const UserRemoteMethod = () => {
-
-}
 
 //表单提交
 const userRuleRef = ref<FormInstance>()
 const onSubmit = async (userForm: FormInstance | undefined) => {
     if (!userForm) return
+    //todo
     await userForm.validate().catch((err) => {
         ElMessage.error("有必填项未填写！")
         throw err;
@@ -116,22 +135,21 @@ const onSubmit = async (userForm: FormInstance | undefined) => {
 
 //删除项目
 const handleDelete = async (id: number) => {
-    await ElMessageBox.confirm("确定要删除整个项目信息吗？", "删除提示：", {
+    await ElMessageBox.confirm("确定要删除这个用户吗？", "删除提示：", {
         confirmButtonText: "确定",
         cancelButtonText: "取消"
     }).catch(() => {
-        ElMessage.info('删除项目信息被取消！');
+        ElMessage.info('删除用户被取消！');
         return new Promise(() => { })
     })
 
     //调用接口函数
     const { data } = await DeleteUserMsg(id);
-    // console.log(data);
     if (data.code === 0 && data.data) {
-        ElMessage.success("删除菜单成功！");
-        // getAllProMenu()
+        ElMessage.success("删除用户成功！");
+        getUserMenus(getPageQuery)
     } else {
-        ElMessage.error("删除菜单失败！");
+        ElMessage.error("删除用户失败！");
     }
 }
 
@@ -152,7 +170,7 @@ const handleDelete = async (id: number) => {
                             </div>
                             <div>
                                 <el-button @click="resetContent">重置</el-button>
-                                <el-button type="primary">查询搜索</el-button>
+                                <el-button type="primary" @click="getUserMenus(getPageQuery)">查询</el-button>
                             </div>
                         </div>
                         <div class="card-input">
@@ -191,14 +209,13 @@ const handleDelete = async (id: number) => {
         <!-- 编辑弹窗 -->
         <el-dialog v-model="updateVisible" title="修改用户角色" min-width="500">
             <el-form ref="userRuleRef" :model="updateUserForm" :inline="true" label-width="100px" class="pro-apply-from">
-                <el-form-item label="用户名称" prop="userId">
+                <el-form-item label="用户名称" prop="username">
                     <el-input v-model="updateUserForm.username" disabled></el-input>
                 </el-form-item>
                 <el-form-item label="角色名称" prop="roleId">
-                    <!-- <el-input v-model="updateUserForm.roleName"></el-input> -->
-                    <el-select v-model="updateUserForm.roleName" filterable remote reserve-keyword placeholder="请选择一个角色"
-                        :remote-method="UserRemoteMethod" :loading="loading" style="width: 240px">
-                        <el-option v-for="item in options" :key="item.value" :label="item.label" :value="item.value" />
+                    <el-select v-model="updateUserForm.roleId" clearable placeholder="请选择一个角色" style="width: 240px">
+                        <el-option v-for="item in UserRoleOption" :key="item.value" :label="item.label"
+                            :value="item.value" />
                     </el-select>
                 </el-form-item>
 

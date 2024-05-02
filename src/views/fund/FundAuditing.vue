@@ -43,6 +43,7 @@ const getFundMenus = async (fundQuery: FundCondition) => {
     //获取数据成功
     if (data.code === 0) {
         FundMenus.value = data.data.data;
+        Object.assign(pageList, data.data.page)
     } else {
         ElMessage.error('获取项目详细信息失败！')
         throw new Error("获取项目详细信息失败！")
@@ -74,10 +75,6 @@ const fundRuleForm = reactive<FundApplyList>({
     remark: ''
 })
 
-//取消
-const cancelSubmit = (fundForm: FormInstance | undefined) => {
-    updateVisible.value = false
-}
 //获取编辑经费数据
 const handleEditFund = async (id: number) => {
     updateVisible.value = true;
@@ -195,7 +192,7 @@ const handleCancel = async (id: string) => {
             </el-form>
             <template #footer>
                 <div class="dialog-footer">
-                    <el-button @click="cancelSubmit(FundRuleRef)">取消</el-button>
+                    <el-button @click="updateVisible = false">取消</el-button>
                     <el-button type="primary" @click="onSubmit(FundRuleRef)">
                         确定
                     </el-button>

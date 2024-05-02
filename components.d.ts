@@ -52,6 +52,7 @@ declare module 'vue' {
     IEpBox: typeof import('~icons/ep/box')['default']
     IEpCoin: typeof import('~icons/ep/coin')['default']
     IEpDocumentAdd: typeof import('~icons/ep/document-add')['default']
+    IEpEdit: typeof import('~icons/ep/edit')['default']
     IEpExpand: typeof import('~icons/ep/expand')['default']
     IEpFiles: typeof import('~icons/ep/files')['default']
     IEpFirstAidKit: typeof import('~icons/ep/first-aid-kit')['default']

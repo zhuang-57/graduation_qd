@@ -1,10 +1,9 @@
 // 导入request对象
-import { type } from 'os';
 import request from '../utils/request';
 import { useTokenStore } from '@/stores/mytoken';
 
 // 提取公共类型
-type CommonReturn = {
+type Common = {
     code:number,
     msg:string,
     data:object,
@@ -31,10 +30,10 @@ export type UserList = Partial<{
 export type LoginInfo = Pick<UserList, "username" | "password">
 
 // 类型定义 - 用户登录 - 返回的数据类型
-// type LoginResult = CommonReture
+// type LoginResult = Common
 // 封装login接口函数，并导出
 export const login = (loginInfo: LoginInfo) => {
-    return request<CommonReture>({
+    return request<Common>({
         method:'POST',
         url:"/user/login",
         data:loginInfo,
@@ -45,28 +44,46 @@ export const login = (loginInfo: LoginInfo) => {
 export type RegisterInfo = Pick<UserList, "username" | "password" | "academyId">
 //用户注册
 export const register = (register: RegisterInfo) => {
-    return request<CommonReture>({
+    return request<Common>({
         method:'POST',
         url:"/user/register",
         data:register,
     })
 }
 
-// 类型定义 - 获取数据 - 传递的数据类型
-type UserInfo = CommonReture<{
-    isUpdatedPassword:boolean
-    portrait:string
-    username:string
-}>
 //获取用户信息
+export type getUserInfoList = Partial<UserList>;
 export const getInfo = () => {
-    return request<UserInfo>({
+    return request<Common<UserList>>({
         mathod:"GET",
         url:'/user/getInfo',
 
     })
 }
 
+// 更新个人主页信息
+export const getUpdateUserInfo = (condition:getUserInfoList) => {
+    return request({
+        method:"POST",
+        url:'/user/update',
+        data:condition
+    })
+}
+
+
+//更新用户密码
+export type PwdCondition = {
+    password:string
+    newPassword:string
+    againPassword:string
+}
+export const getUpdateUserPwd = (condition:PwdCondition) => {
+    return request({
+        method:"POST",
+        url:"/user/updatePassword",
+        data:condition
+    })
+}
 //退出操作
 export const logout = () => {
     return request({
@@ -76,12 +93,12 @@ export const logout = () => {
 }
 
 //获取完整用户列表
-export const getUserMenu = () => {
-    return request<Common<UserList[]>>({
-        method:'GET',
-        url:"/user/getUserList"
-    })
-}
+// export const getUserMenu = () => {
+//     return request<Common<UserList[]>>({
+//         method:'GET',
+//         url:"/user/getUserList"
+//     })
+// }
 
 //获取学院列表信息
 export const getAcademyList = () => {
@@ -148,7 +165,7 @@ export const DeleteUserMsg = (id:number) => {
 }
 
 //刷新token
-// type RToken = CommonReture<string>
+// type RToken = Common<string>
 
 // let promiseRT: Promise<any>
 // let isRefreshing = false
@@ -158,7 +175,7 @@ export const DeleteUserMsg = (id:number) => {
 //         return promiseRT
 //     }
 //     isRefreshing = true
-//     promiseRT = request<CommonReture>({
+//     promiseRT = request<Common>({
 //         method:"POST",
 //         url:"/user/refreshToken",
 //         params:{

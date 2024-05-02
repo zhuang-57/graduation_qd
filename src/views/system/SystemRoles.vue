@@ -226,7 +226,8 @@ const handleDeleteRole = async (id: number) => {
     <el-dialog v-model="updateVisible" title="编辑角色" width="500">
         <el-form :model="updateRolesMenus" ref="roleRuleRef">
             <el-form-item label="角色Id:" prop="roleId" label-width="80">
-                <el-input v-model="updateRolesMenus.roleId" disabled></el-input>
+                <!-- <el-input v-model="updateRolesMenus.roleId" disabled></el-input> -->
+                {{ updateRolesMenus.roleId }}
             </el-form-item>
             <el-form-item label="角色名称:" prop="rolesName" label-width="80">
                 <el-input v-model="updateRolesMenus.rolesName" autocomplete="off" />

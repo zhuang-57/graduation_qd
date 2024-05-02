@@ -104,7 +104,9 @@ const handleLogOut = async () => {
 
         .user-text {
             margin-right: 10px;
-            color: #999AAA;
+            // color: #999AAA;
+            color: #000;
+
         }
 
         .el-dropdown {
@@ -112,7 +114,8 @@ const handleLogOut = async () => {
 
             .custom-avatar {
                 font-size: 20px;
-                // background-color: #FC5531;
+                font-weight: bold;
+                background-color: #000;
             }
 
             // .custom-avatar:focus,

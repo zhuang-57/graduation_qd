@@ -10,4 +10,11 @@ import zhCn from 'element-plus/dist/locale/zh-cn';
   </el-config-provider>
 </template>
 
-<style scoped></style>
+<style>
+* {
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+  list-style: none;
+}
+</style>

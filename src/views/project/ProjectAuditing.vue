@@ -115,7 +115,7 @@ const proRuleRef = ref<FormInstance>();
 const onSubmit = async (proForm: FormInstance | undefined) => {
     if (!proForm) return
     await proForm.validate().catch((err) => {
-        ElMessage.error("有必填项未填写！")
+        ElMessage.error("编辑信息有误！")
         throw err;
     })
     const { data } = await getProjectUpdate(updateProForm).finally(() => {

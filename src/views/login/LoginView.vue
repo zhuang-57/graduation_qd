@@ -8,7 +8,6 @@ import { login, LoginInfo, RegisterInfo, getAcademyList, register } from '../../
 import { useTokenStore } from "../../stores/mytoken"
 //路由跳转
 import { useRouter, useRoute } from "vue-router"
-import { log } from 'console';
 
 //获取表单
 const formRef = ref<FormInstance>()
@@ -141,7 +140,7 @@ const rules = reactive<FormRules>({
                 <el-form-item prop="password" class="base-input">
                     <el-input type="password" v-model="form.password" placeholder="密码" />
                 </el-form-item>
-                <el-link style="margin-left: 230px;font-size: 12px;" type="primary"
+                <el-link style="margin-left: 180px;font-size: 12px;" type="primary"
                     @click="getRegister = !getRegister">没有注册？去注册</el-link>
                 <el-form-item>
                     <el-button color="#FC5531" @click="onSubmit(formRef)" :loading="isLoading" :disabled="isButtonEnabled"
@@ -164,7 +163,7 @@ const rules = reactive<FormRules>({
                 <el-form-item prop="password" class="base-input">
                     <el-input type="password" v-model="registerForm.password" placeholder="密码" />
                 </el-form-item>
-                <el-link style="margin-left: 230px;font-size: 12px;" type="primary"
+                <el-link style="margin-left: 200px;font-size: 12px;" type="primary"
                     @click="getRegister = !getRegister">已注册？去登录</el-link>
                 <el-form-item>
                     <el-button color="#FC5531" @click="onRegister(formRef)" :loading="isLoading" :disabled="isButtonEnabled"
@@ -205,7 +204,7 @@ h2 {
     }
 
     .el-form {
-        width: 330px;
+        width: 350px;
         padding: 30px;
         border-radius: 10px;
         background-color: #fff;
