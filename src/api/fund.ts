@@ -64,20 +64,19 @@ export const getFundQuery = (condition:FundCondition) => {
     })
 }
 
-//编辑经费信息
+//审核经费信息
 
-// type EditFundList = Common<{
-//     menuInfo:FundItemMenu
-// }>
-// export const getUpdateFund = (id:string) => {
-//     return request<Common<EditFundList>>({
-//         method:"GET",
-//         url:"/fund/update",
-//         params:{
-//             id
-//         }
-//     })
-// }
+export type AuditFundCondition = {
+    fundId:number,
+    acceptFlag:boolean
+}
+export const getAuditFund = (condition: AuditFundCondition) => {
+    return request({
+        method:"POST",
+        url:"/fund/audit",
+        data:condition
+    })
+}
 
 //撤回经费申请信息
 export const DeleteFundMsg = (id:string) => {

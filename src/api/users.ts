@@ -54,7 +54,7 @@ export const register = (register: RegisterInfo) => {
 //获取用户信息
 export type getUserInfoList = Partial<UserList>;
 export const getInfo = () => {
-    return request<Common<UserList>>({
+    return request({
         mathod:"GET",
         url:'/user/getInfo',
 

@@ -4,14 +4,29 @@ import { isCollapse } from './isCollapse';
 import { getInfo, logout, UserList } from '../../api/users';
 import { useRouter } from 'vue-router';
 import { useTokenStore } from '../../stores/mytoken';
-import { log } from 'console';
-
+import { useUserStore } from "../../stores/users"
 const router = useRouter()
 const userInfo = ref<UserList>({ img: "", username: "" })
 
-getInfo().then(res => {
-    userInfo.value = res.data.data
-})
+const getInfoLogin = async () => {
+    const userStore = useUserStore()
+    const { data } = await getInfo()
+    if (data.code === 0) {
+        userStore.loginSuccess(data.data)
+        console.log(userStore.userInfo);
+
+        userInfo.value = data.data
+    }
+    else {
+        ElMessage.error(data.msg)
+        useTokenStore().saveToken("")
+        router.push(
+            { name: 'Login' }
+        )
+    }
+
+}
+getInfoLogin()
 
 //获取头像
 const getHeadImg = computed(() => {

@@ -1,8 +1,12 @@
 <script setup lang="ts">
 import { reactive } from 'vue';
-import { FundApplyList, getFundQuery, DeleteFundMsg, GetPage, GETPageList, FundCondition } from "../../api/fund"
+import { FundApplyList, getFundQuery, DeleteFundMsg, GetPage, GETPageList, FundCondition, AuditFundCondition, getAuditFund } from "../../api/fund"
 import { FormInstance, FormRules } from 'element-plus';
 import { timeFormatter } from "../../utils/timeFormatter"
+import router from "../../router/index"
+import { useUserStore } from "../../stores/users"
+const userStore = useUserStore()
+
 //分页查询条件
 const page = reactive<GetPage>(
     {
@@ -33,20 +37,35 @@ const resetContent = () => {
     }
 }
 
-//获取项目详细数据
+//经费申请状态
+const FundStatusEnum = {
+    WAIT_AUDIT: "待审核",
+    CANCEL: "取消",
+    ACCEPT: "同意",
+    REFUSE: "拒绝"
+}
+
+const frontStatus = (query: string) => {
+    return FundStatusEnum[query]
+}
+
+//获取经费详细数据
 const FundMenus = ref([] as FundApplyList[])
 const getFundMenus = async (fundQuery: FundCondition) => {
     Object.assign(getPageQuery, fundQuery);
     const { data } = await getFundQuery(getPageQuery);
-    console.log(data);
 
     //获取数据成功
     if (data.code === 0) {
-        FundMenus.value = data.data.data;
+        const fundStartusList = data.data.data.map((item) => {
+            const getStatus = frontStatus(item.status)
+            return { ...item, status: getStatus };
+        })
+        FundMenus.value = fundStartusList;
         Object.assign(pageList, data.data.page)
     } else {
-        ElMessage.error('获取项目详细信息失败！')
-        throw new Error("获取项目详细信息失败！")
+        ElMessage.error(data.msg)
+        throw new Error(data.msg)
     }
 }
 getFundMenus(getPageQuery)
@@ -62,43 +81,64 @@ const handleCurrentChange = (pageNo: number) => {
     getFundMenus(getPageQuery)
 }
 
-//编辑项目
-const FundRuleRef = ref<FormInstance>()
-const updateVisible = ref(false);
-const fundRuleForm = reactive<FundApplyList>({
-    proId: 1,
-    proName: '',
-    fund: 0,
-    status: '',
-    account: '',
-    createTime: '',
-    remark: ''
+//添加经费按钮
+const addFundBtn = () => {
+    router.push({ name: "FundApply" })
+}
+//审核项目
+const fundAuditForm = reactive<AuditFundCondition>({
+    fundId: 1,
+    acceptFlag: false
 })
 
-//获取编辑经费数据
-const handleEditFund = async (id: number) => {
-    updateVisible.value = true;
+// 同意经费申请
+const passFundReq = async (id: number) => {
+    await ElMessageBox.confirm("确定要同意经费申请吗？", "经费提示：", {
+        confirmButtonText: "确定",
+        cancelButtonText: "取消"
+    }).catch(() => {
+        ElMessage.info('经费申请被取消！');
+        return new Promise(() => { })
+    })
+    //调用接口函数
+    fundAuditForm.fundId = id
+    fundAuditForm.acceptFlag = true
+    const { data } = await getAuditFund(fundAuditForm);
+    if (data.code === 0) {
+        ElMessage.success("经费申请执行成功！");
+        getFundMenus(getPageQuery)
+    } else {
+        ElMessage.error(data.msg)
+    }
+}
+
+//同意按钮是否可用
+const getBtnUse = (id: number) => {
     const getFundItem = FundMenus.value.find((item) => item.id === id)
-    Object.assign(fundRuleForm, getFundItem);
+    return getFundItem.status !== FundStatusEnum.WAIT_AUDIT
 }
 
 
-//发送编辑请求
-const onSubmit = async (fundFrom: FormInstance | undefined) => {
-    if (!fundFrom) return
-    await fundFrom.validate().catch((err) => {
-        ElMessage.error("有必填项未填写！")
-        throw err;
+
+// 拒绝经费申请
+const rejectFundReq = async (id: number) => {
+    await ElMessageBox.confirm("确定要拒绝经费申请吗？", "经费提示：", {
+        confirmButtonText: "确定",
+        cancelButtonText: "取消"
+    }).catch(() => {
+        ElMessage.info('经费申请被取消！');
+        return new Promise(() => { })
     })
-    // const { data } = await getUpdateFund(fundRuleForm);
-
-    // if (data.code === 0) {
-    //     // ruleForm.value = data.data.menuInfo;
-
-    // } else {
-    //     ElMessage.error("获取编辑信息失败！");
-    //     throw new Error("获取编辑数据失败")
-    // }
+    //调用接口函数
+    fundAuditForm.fundId = id
+    fundAuditForm.acceptFlag = false
+    const { data } = await getAuditFund(fundAuditForm);
+    if (data.code === 0) {
+        ElMessage.success("拒绝经费申请成功执行！");
+        getFundMenus(getPageQuery)
+    } else {
+        ElMessage.error(data.msg)
+    }
 }
 
 //撤回项目
@@ -126,7 +166,6 @@ const handleCancel = async (id: string) => {
     <div class="content">
         <el-card style="min-width: 480px">
             <template #header>
-                <div style="margin-bottom: 20px;"> 经费库 </div>
                 <el-card shadow="never">
                     <div class="card-content">
                         <div class="card-icon">
@@ -145,6 +184,16 @@ const handleCancel = async (id: string) => {
                     </div>
                 </el-card>
             </template>
+            <!-- 中间添加按钮 -->
+            <el-card shadow="never" style="margin-bottom: 20px;">
+                <div class="role-list">
+                    <div> 经费库 </div>
+                    <div>
+                        <el-button plain @click="addFundBtn">添加</el-button>
+                    </div>
+                </div>
+            </el-card>
+            <!-- 下面的经费表格 -->
             <el-table :data="FundMenus" border style="width: 100%">
                 <el-table-column prop="proId" label="项目编号" align="center">
                 </el-table-column>
@@ -157,12 +206,22 @@ const handleCancel = async (id: string) => {
                 <el-table-column prop="createTime" :formatter="timeFormatter" label="申请日期" align="center">
                 </el-table-column>
                 <el-table-column prop="status" label="状态" width="120" align="center">
+                    <template #default="scope">
+                        <el-tag
+                            :type="scope.row.status === '拒绝' ? 'danger' : scope.row.status === '同意' ? 'success' : scope.row.status === '待审核' ? 'primary' : 'warning'"
+                            disable-transitions>{{ scope.row.status
+                            }}</el-tag>
+                    </template>
                 </el-table-column>
                 <el-table-column prop="remark" label="备注" align="center">
                 </el-table-column>
                 <el-table-column fixed="right" label="操作" width="200" align="center" v-slot="scope">
-                    <el-button type="primary" size="small" @click="handleEditFund(scope.row.id)">编辑</el-button>
-                    <el-button type="danger" size="small" @click="handleCancel(scope.row.id)">撤回</el-button>
+                    <el-button v-if="userStore.userInfo.roleId === 3" type="success" size="small"
+                        @click="passFundReq(scope.row.id)" :disabled="getBtnUse(scope.row.id)">同意</el-button>
+                    <el-button v-if="userStore.userInfo.roleId === 3" type="danger" size="small"
+                        @click="rejectFundReq(scope.row.id)" :disabled="getBtnUse(scope.row.id)">拒绝</el-button>
+                    <el-button v-if="userStore.userInfo.roleId !== 3" type="danger" size="small"
+                        @click="handleCancel(scope.row.id)">撤回</el-button>
                 </el-table-column>
             </el-table>
             <template #footer>
@@ -173,32 +232,6 @@ const handleCancel = async (id: string) => {
                 </div>
             </template>
         </el-card>
-
-        <!-- 编辑弹窗 -->
-        <el-dialog v-model="updateVisible" title="编辑项目信息" min-width="500">
-            <el-form ref="FundRuleRef" :model="fundRuleForm" :inline="true" label-width="100px" class="pro-apply-from">
-                <el-form-item label="项目名称" prop="proName">
-                    <el-input v-model="fundRuleForm.proName"></el-input>
-                </el-form-item>
-                <el-form-item label="申请经费" prop="fund">
-                    <el-input v-model="fundRuleForm.fund"></el-input>
-                </el-form-item>
-                <el-form-item label="打款账号" prop="account">
-                    <el-input v-model="fundRuleForm.account"></el-input>
-                </el-form-item>
-                <el-form-item label="备注" prop="remark">
-                    <el-input v-model="fundRuleForm.remark" type="textarea"></el-input>
-                </el-form-item>
-            </el-form>
-            <template #footer>
-                <div class="dialog-footer">
-                    <el-button @click="updateVisible = false">取消</el-button>
-                    <el-button type="primary" @click="onSubmit(FundRuleRef)">
-                        确定
-                    </el-button>
-                </div>
-            </template>
-        </el-dialog>
     </div>
 </template>
   
@@ -221,5 +254,12 @@ const handleCancel = async (id: string) => {
 .pagination {
     display: flex;
     justify-content: center;
+}
+
+.role-list {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 </style>

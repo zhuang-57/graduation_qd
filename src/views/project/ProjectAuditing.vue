@@ -1,9 +1,13 @@
 <script setup lang="ts">
-import { ProCondition, GetPage, ProjectApplyList, GETPageList, EditMenuList, getProjectUpdate, getAllProMenu, DeleteProMsg } from "../../api/project"
+import { StatusCondition, getStatusAudit, ProCondition, GetPage, ProjectApplyList, GETPageList, EditMenuList, getProjectUpdate, getAllProMenu, DeleteProMsg } from "../../api/project"
 import { FormInstance, FormRules } from 'element-plus';
 import router from "../../router/index"
 import { timeFormatter } from "../../utils/timeFormatter"
 import { reactive } from 'vue';
+import { useUserStore } from "../../stores/users"
+const userStore = useUserStore()
+
+
 
 //分页查询条件
 const page = reactive<GetPage>(
@@ -29,19 +33,37 @@ const pageList = reactive<GETPageList>({
 })
 
 
+// 状态属性
+const statusMap = {
+    WAIT_AUDIT: "待审核",
+    REFUSE: "驳回",
+    WAIT_MIDDLE_CHECK: "待中期检查",
+    WAIT_END: "待结题",
+    END: "结束"
+}
+
+const frontStatus = (query: string) => {
+    return statusMap[query]
+}
 
 //获取项目列表数据
 const ProMenus = ref([] as ProjectApplyList[])
+
 const getProjectMenus = async (proQuery: ProCondition) => {
     Object.assign(getPageQuery, proQuery);
     const { data } = await getAllProMenu(getPageQuery);
     //获取数据成功
     if (data.code === 0) {
-        ProMenus.value = data.data.data;
+        const ProStartusList = data.data.data.map((item) => {
+            const getStatus = frontStatus(item.status)
+            return { ...item, status: getStatus };
+        })
+        ProMenus.value = ProStartusList;
         Object.assign(pageList, data.data.page);
+
     } else {
-        ElMessage.error('获取项目详细信息失败！')
-        throw new Error("获取项目详细信息失败！")
+        ElMessage.error(data.msg)
+        throw new Error(data.msg)
     }
 }
 getProjectMenus(getPageQuery)
@@ -57,8 +79,8 @@ const handleCurrentChange = (pageNo: number) => {
     getProjectMenus(getPageQuery)
 }
 
-const updateVisible = ref(false);
 //编辑项目
+const updateVisible = ref(false);
 const updateProForm = reactive<EditMenuList>({
     id: 1,
     proName: '',
@@ -81,11 +103,43 @@ const resetContent = () => {
     }
 }
 
+//结束时间迟于开始时间
+const validateEndTime = (rule, value, callback) => {
+    if (value === '') {
+        callback(new Error('结束时间不能为空'))
+    } else if (updateProForm.startime && new Date(value) <= new Date(updateProForm.startime)) {
+        callback(new Error('结束时间必须晚于开始时间'))
+    } else {
+        callback()
+    }
+}
+//表单限制
+const EditRules = reactive<FormRules<ProjectApplyList>>({
+    teacherPhone: [
+        { required: true, message: '请输入指导老师手机号', trigger: 'blur' },
+        { len: 11, message: '手机号需要11位', trigger: 'blur' }
+    ],
+    endtime: [
+        {
+            type: 'date',
+            required: true,
+            message: '请选择预期结束时间',
+            trigger: 'change',
+        },
+        { validator: validateEndTime, trigger: 'change' }
+    ],
+})
+
 //(1)编辑表单
 const handleEditPro = async (id: number) => {
     updateVisible.value = true;
     const getProItem = ProMenus.value.find((item) => item.id === id)
     Object.assign(updateProForm, getProItem);
+}
+
+const EditIsDisabled = (id: number) => {
+    const getProItem = ProMenus.value.find((item) => item.id === id)
+    return getProItem.statusName !== statusMap.WAIT_AUDIT
 }
 
 //文件上传
@@ -111,7 +165,7 @@ const handleFileSuccess = (response, file, fileList) => {
 
 //表单验证
 const proRuleRef = ref<FormInstance>();
-//(2)表单提交
+//(2)编辑表单提交
 const onSubmit = async (proForm: FormInstance | undefined) => {
     if (!proForm) return
     await proForm.validate().catch((err) => {
@@ -130,11 +184,55 @@ const onSubmit = async (proForm: FormInstance | undefined) => {
 }
 
 //查看项目详情
+const statusItem = reactive<StatusCondition>({
+    id: 1,
+    acceptFlag: false
+})
+// 按钮是否可见
+const BtnVisible = ref(true)
+
+//查看详情
 const visible = ref(false);
 const handleCheck = (id: number) => {
     const getProItem = ProMenus.value.find((item) => item.id === id)
+    if (userStore.userInfo.roleId !== 3) {
+        BtnVisible.value = false
+    } else if (getProItem.status === statusMap.REFUSE || getProItem.status === statusMap.END) {
+        BtnVisible.value = false
+    } else {
+        BtnVisible.value = true
+    }
     Object.assign(updateProForm, getProItem);
     visible.value = true;
+}
+
+//驳回申请
+const RejectProReq = async (id: number) => {
+    statusItem.id = id
+    statusItem.acceptFlag = false
+    const { data } = await getStatusAudit(statusItem);
+    if (data.code === 0) {
+        ElMessage.success("驳回项目信息成功！")
+        BtnVisible.value = false
+        getProjectMenus(getPageQuery)
+    } else {
+        ElMessage.error(data.msg)
+    }
+}
+
+//通过审核申请
+const PassProReq = async (id: number) => {
+    statusItem.id = id
+    statusItem.acceptFlag = true
+    const { data } = await getStatusAudit(statusItem);
+    if (data.code === 0) {
+        ElMessage.success("审核通过！")
+        getProjectMenus(getPageQuery)
+        const getSuccessStatus = ProMenus.value.find((item) => item.id === id)
+        if (getSuccessStatus.status === statusMap.WAIT_END) BtnVisible.value = false
+    } else {
+        ElMessage.error(data.msg)
+    }
 }
 
 //删除项目
@@ -159,15 +257,6 @@ const handleDelete = async (id: number) => {
         ElMessage.error("删除项目失败！");
     }
 }
-
-// const formatStatus = (status: string) => {
-//     switch (status) {
-//         case "WAIT_AUDIT":
-//             return "未审核";
-//         default:
-//             return status;
-//     }
-// }
 
 //项目类型
 const options = [
@@ -214,11 +303,20 @@ const options = [
                 </el-table-column>
                 <el-table-column prop="endtime" label="预期结束日期" :formatter="timeFormatter" width="180" align="center">
                 </el-table-column>
-                <el-table-column prop="statusName" label="状态" align="center">
+                <el-table-column prop="status" label="状态" align="center">
+                    <template #default="scope">
+                        <el-tag
+                            :type="scope.row.status === '待审核' ? 'danger' : scope.row.status === '驳回' ? 'info' : scope.row.status === '结束' ? 'success' : 'warning'"
+                            disable-transitions>{{ scope.row.status
+                            }}</el-tag>
+                    </template>
+
+
                 </el-table-column>
                 <el-table-column fixed="right" label="操作" width="200" align="center" v-slot="scope">
                     <el-button @click="handleCheck(scope.row.id)" size="small">查看</el-button>
-                    <el-button type="primary" size="small" @click="handleEditPro(scope.row.id)">编辑</el-button>
+                    <el-button v-if="userStore.userInfo.roleId !== 3" type="primary" size="small"
+                        :disabled="EditIsDisabled(scope.row.id)" @click="handleEditPro(scope.row.id)">编辑</el-button>
                     <el-button type="danger" size="small" @click="handleDelete(scope.row.id)">删除</el-button>
                 </el-table-column>
             </el-table>
@@ -233,42 +331,61 @@ const options = [
         </el-card>
         <!-- 侧边栏展示 -->
         <el-drawer v-model="visible" class="drawer-content" title="项目详情：" direction="rtl" size="30%">
-
-            <el-card style="max-width: 480px" shadow="never">
-                <p class="drawer-item">项目编号：{{ updateProForm.id }}</p>
-                <p class="drawer-item">项目名称：{{ updateProForm.proName }}</p>
-                <p class="drawer-item">项目级别：{{ updateProForm.level }}</p>
-                <p class="drawer-item">项目类型：{{ updateProForm.type }}</p>
-                <p class="drawer-item">指导老师名称：{{ updateProForm.teacherName }}</p>
-                <p class="drawer-item">指导老师手机号：{{ updateProForm.teacherPhone }}</p>
-                <p class="drawer-item">项目成员：{{ updateProForm.member }}</p>
-                <p class="drawer-item">开始时间：{{ timeFormatter(undefined, undefined, updateProForm.startime) }}</p>
-                <p class="drawer-item">结束时间：{{ timeFormatter(undefined, undefined, updateProForm.endtime) }}</p>
-                <p class="drawer-item">备注：{{ updateProForm.remark }}</p>
-                <p class="drawer-item">项目附件：<a :href="updateProForm.link">附件</a></p>
-
-
-            </el-card>
-            <div style="margin-top: 10px;">
-                <el-button type="danger">驳回申请</el-button>
-                <el-button type="primary">审核通过</el-button>
+            <div class="drawer-btn" v-if="BtnVisible">
+                <el-button type="danger" plain @click="RejectProReq(updateProForm.id)">驳回申请</el-button>
+                <el-button type="success" plain @click="PassProReq(updateProForm.id)"> 审核通过
+                </el-button>
             </div>
+
+            <el-card style=" max-width: 480px" shadow="never">
+                <ul>
+                    <li class="drawer-item">项目编号：{{ updateProForm.id }}</li>
+                    <li class="drawer-item">项目名称：{{ updateProForm.proName }}</li>
+                    <li class="drawer-item">项目级别：{{ updateProForm.level }}</li>
+                    <li class="drawer-item">项目类型：{{ updateProForm.type }}</li>
+                    <li class="drawer-item">指导老师名称：{{ updateProForm.teacherName }}</li>
+                    <li class="drawer-item">指导老师手机号：{{ updateProForm.teacherPhone }}</li>
+                    <li class="drawer-item">项目成员：{{ updateProForm.member }}</li>
+                    <li class="drawer-item">开始时间：{{ timeFormatter(undefined, undefined, updateProForm.startime) }}</li>
+                    <li class="drawer-item">结束时间：{{ timeFormatter(undefined, undefined, updateProForm.endtime) }}</li>
+                    <li class="drawer-item">备注：{{ updateProForm.remark }}</li>
+                    <li class="drawer-item">项目附件：<a :href="updateProForm.link">下载附件</a></li>
+                </ul>
+            </el-card>
+
+            <el-card style="margin-top:20px " shadow="never">
+                <div style="height: 160px; max-width: 600px">
+                    <el-steps direction="vertical" :active="1" finish-status="success">
+                        <el-step title="提交中期检查材料">
+                            <template #description>
+                                <el-button type="primary" plain>提交附件</el-button>
+                            </template>
+                        </el-step>
+                        <el-step title="提交结题材料">
+                            <template #description>
+                                <el-button type="primary" plain>提交附件</el-button>
+                            </template>
+                        </el-step>
+                    </el-steps>
+                </div>
+            </el-card>
         </el-drawer>
         <!-- 编辑弹窗 -->
-        <el-dialog v-model="updateVisible" title="编辑项目信息" min-width="500">
-            <el-form ref="proRuleRef" :model="updateProForm" :inline="true" label-width="100px" class="pro-apply-from">
+        <el-dialog v-model="updateVisible" title="编辑项目信息" width="870">
+            <el-form ref="proRuleRef" :rules="EditRules" :model="updateProForm" :inline="true" label-width="125px"
+                class="pro-apply-form">
                 <el-form-item label="项目名称" prop="proName">
                     <el-input v-model="updateProForm.proName"></el-input>
                 </el-form-item>
                 <el-form-item label="项目级别" prop="level">
-                    <el-select v-model="updateProForm.level" placeholder="请选择">
+                    <el-select style="width: 250px;" v-model="updateProForm.level" placeholder="请选择">
                         <el-option label="国家级" value="国家级" />
                         <el-option label="省级" value="省级" />
                         <el-option label="校级" value="校级" />
                     </el-select>
                 </el-form-item>
                 <el-form-item label="项目类型" prop="type">
-                    <el-select v-model="updateProForm.type" placeholder="请选择">
+                    <el-select style="width: 250px;" v-model="updateProForm.type" placeholder="请选择">
                         <el-option v-for="item in options" :key="item.value" :label="item.lable" :value="item.value">
                         </el-option>
                     </el-select>
@@ -283,16 +400,18 @@ const options = [
                     <el-input v-model="updateProForm.member"></el-input>
                 </el-form-item>
                 <el-form-item label="预期开始时间" prop="startime">
-                    <el-date-picker type="date" placeholder="请选择日期" v-model="updateProForm.startime"></el-date-picker>
+                    <el-date-picker type="date" style="width: 250px;" placeholder="请选择日期"
+                        v-model="updateProForm.startime"></el-date-picker>
                 </el-form-item>
                 <el-form-item label="预期结束时间" prop="endtime">
-                    <el-date-picker type="date" placeholder="请选择日期" v-model="updateProForm.endtime"></el-date-picker>
+                    <el-date-picker type="date" style="width: 250px;" placeholder="请选择日期"
+                        v-model="updateProForm.endtime"></el-date-picker>
                 </el-form-item>
                 <el-form-item label="备注" prop="remark">
-                    <el-input v-model="updateProForm.remark" type="textarea"></el-input>
+                    <el-input style="width: 250px;" rows="10" v-model="updateProForm.remark" type="textarea"></el-input>
                 </el-form-item>
-                <el-form-item>
-                    <el-upload v-model="updateProForm.link" class="upload-demo" drag :on-success="handleFileSuccess"
+                <el-form-item class="upload-demo">
+                    <el-upload v-model="updateProForm.link" drag :on-success="handleFileSuccess"
                         action="http://127.0.0.1:5173/api/file/uploadFile" multiple aria-required="true">
                         <el-icon class="el-icon--upload">
                             <IEpUploadFilled />
@@ -303,6 +422,7 @@ const options = [
                         </template>
                     </el-upload>
                 </el-form-item>
+
             </el-form>
             <template #footer>
                 <div class="dialog-footer">
@@ -319,8 +439,12 @@ const options = [
 
 
 <style scoped lang="scss">
-.pro-apply-from {
-    width: 80%;
+.pro-apply-form .el-input {
+    --el-input-width: 250px;
+}
+
+.pro-apply-form .el-select {
+    --el-select-width: 250px;
 }
 
 .card-content {
@@ -348,6 +472,22 @@ const options = [
     .drawer-item {
         padding-bottom: 20px;
         color: #72767b;
+
+        a {
+            text-decoration: none;
+        }
     }
+}
+
+.drawer-btn {
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+//上传文件
+.upload-demo {
+    margin-left: 30px;
+    margin-top: 20px;
 }
 </style>

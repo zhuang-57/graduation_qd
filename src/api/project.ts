@@ -71,6 +71,20 @@ export const getAllProMenu = (condition: ProCondition) => {
     })
 }
 
+export type StatusCondition = {
+    id: number
+    acceptFlag: boolean
+}
+
+//查看项目中的审核信息
+export const getStatusAudit = (condition:StatusCondition) => {
+    return request({
+        method:"POST",
+        url:"/project/audit",
+        data:condition
+    })
+}
+
  export type EditMenuList = Pick<ProjectList, "id" | "proName" | "level" | "link" | "member" | "type" | "teacherName" | "teacherPhone" |"startime" | "endtime" | "remark" >
 //更新项目
 export const getProjectUpdate = (updateProjectItem:EditMenuList) => {

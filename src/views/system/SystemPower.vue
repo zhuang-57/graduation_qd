@@ -128,12 +128,12 @@ const onSubmit = async (userForm: FormInstance | undefined) => {
     if (data.code === 0) {
         getUserMenus(getPageQuery)
     } else {
-        ElMessage.error("修改用户角色失败，请重试！")
+        ElMessage.error(data.msg)
         throw new Error("修改用户角色失败！")
     }
 }
 
-//删除项目
+//删除用户信息
 const handleDelete = async (id: number) => {
     await ElMessageBox.confirm("确定要删除这个用户吗？", "删除提示：", {
         confirmButtonText: "确定",
@@ -145,11 +145,11 @@ const handleDelete = async (id: number) => {
 
     //调用接口函数
     const { data } = await DeleteUserMsg(id);
-    if (data.code === 0 && data.data) {
+    if (data.code === 0) {
         ElMessage.success("删除用户成功！");
         getUserMenus(getPageQuery)
     } else {
-        ElMessage.error("删除用户失败！");
+        ElMessage.error(data.msg);
     }
 }
 

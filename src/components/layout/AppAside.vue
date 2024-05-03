@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { isCollapse } from './isCollapse';
+import { useUserStore } from "../../stores/users"
+const userStore = useUserStore()
 </script>
 
 <template>
@@ -63,7 +65,7 @@ import { isCollapse } from './isCollapse';
             </el-icon> <span>成果列表</span>
           </el-menu-item>
         </el-sub-menu>
-        <el-sub-menu index="4">
+        <el-sub-menu index="4" v-if="userStore.userInfo?.roleId === 3">
           <template #title>
             <el-icon>
               <IEpOperation />

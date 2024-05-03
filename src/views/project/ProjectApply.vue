@@ -19,6 +19,17 @@ const ruleForm = reactive<ProjectApplyList>({
     link: '',
 })
 
+//结束时间迟于开始时间
+const validateEndTime = (rule, value, callback) => {
+    if (value === '') {
+        callback(new Error('结束时间不能为空'))
+    } else if (ruleForm.startime && new Date(value) <= new Date(ruleForm.startime)) {
+        callback(new Error('结束时间必须晚于开始时间'))
+    } else {
+        callback()
+    }
+}
+
 const rules = reactive<FormRules<ProjectApplyList>>({
     proName: [
         { required: true, message: '请输入项目名称', trigger: 'blur' },
@@ -41,7 +52,8 @@ const rules = reactive<FormRules<ProjectApplyList>>({
         { required: true, message: '请输入指导老师名称', trigger: 'blur' }
     ],
     teacherPhone: [
-        { required: true, message: '请输入指导老师手机号', trigger: 'blur' }
+        { required: true, message: '请输入指导老师手机号', trigger: 'blur' },
+        { len: 11, message: '手机号需要11位', trigger: 'blur' }
     ],
     startime: [
         {
@@ -58,6 +70,7 @@ const rules = reactive<FormRules<ProjectApplyList>>({
             message: '请选择预期结束时间',
             trigger: 'change',
         },
+        { validator: validateEndTime, trigger: 'change' }
     ],
     remark: [
         { required: true, message: '请填写项目描述', trigger: 'blur' },
@@ -66,6 +79,8 @@ const rules = reactive<FormRules<ProjectApplyList>>({
         { required: true, message: '请添加上传附件', trigger: 'blur' },
     ],
 })
+
+
 
 //文件上传
 const FileList = ref([]);
@@ -172,10 +187,10 @@ const options = [
                     <el-input v-model="ruleForm.member" />
                 </el-form-item>
                 <el-form-item label="项目预期启动时间" prop="startime" required>
-                    <el-date-picker v-model="ruleForm.startime" type="date" placeholder="请选择日期" />
+                    <el-date-picker v-model="ruleForm.startime" type="datetime" placeholder="请选择日期" />
                 </el-form-item>
                 <el-form-item label="项目预期结束时间" prop="endtime" required>
-                    <el-date-picker v-model="ruleForm.endtime" type="date" placeholder="请选择日期" />
+                    <el-date-picker v-model="ruleForm.endtime" type="datetime" placeholder="请选择日期" />
                 </el-form-item>
 
                 <el-form-item label="项目描述" prop="remark">

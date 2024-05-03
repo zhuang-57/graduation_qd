@@ -1,27 +1,43 @@
 <script setup lang="ts">
 import { reactive } from 'vue'
 import { getInfo, getUserInfoList, getUpdateUserInfo, PwdCondition, getUpdateUserPwd } from "../../api/users"
-import { FormInstance } from 'element-plus';
+import { FormInstance, FormRules } from 'element-plus';
 import { timeDayFormatter } from "../../utils/timeFormatter"
 import router from "../../router/index"
 //获取用户信息详情
 const userInfo = reactive<getUserInfoList>({
     academyId: 1,
-    birthday: '未填写',
-    educational: '未填写',
+    birthday: '',
+    educational: '',
     id: 1,
     img: '',
-    major: '未填写',
+    major: '',
     password: '',
-    phone: '未填写',
-    remark: '未填写',
+    phone: '',
+    remark: '',
     roleId: 1,
     roleName: '',
     username: '',
     sex: '',
 })
 
+//密码规则
+const userPwdRules = reactive<FormRules>({
+    password: [
+        { required: true, message: '密码不能为空', trigger: 'blur' },
+        { min: 6, max: 18, message: '密码长度为6-18位', trigger: 'blur' }
+    ],
+    newPassword: [
+        { required: true, message: '密码不能为空', trigger: 'blur' },
+        { min: 6, max: 18, message: '密码长度为6-18位', trigger: 'blur' }
+    ],
+    againPassword: [
+        { required: true, message: '密码不能为空', trigger: 'blur' },
+        { min: 6, max: 18, message: '密码长度为6-18位', trigger: 'blur' }
+    ],
+})
 
+//获取个人用户信息
 const getUserInfo = async () => {
     const { data } = await getInfo();
     if (data.code === 0) {
@@ -29,6 +45,15 @@ const getUserInfo = async () => {
     }
 }
 getUserInfo()
+
+//获取头像
+const getHeadImg = computed(() => {
+    if (userInfo.img.trim()) {
+        return userInfo.img
+    } else {
+        return userInfo.username.charAt(userInfo.username.length - 1)
+    }
+})
 
 //编辑信息
 const updateVisible = ref(false)
@@ -60,17 +85,23 @@ const userUpdatePwdList = reactive<PwdCondition>({
 })
 const updateUserPwd = async (userPwdForm: FormInstance | undefined) => {
     if (!userPwdForm) return
-    userPwdForm.validate().catch((err) => {
+    await userPwdForm.validate((valid, fields) => {
+        if (valid) {
+            getUpdateUserPwd(userUpdatePwdList).then((res) => {
+                if (res.data.code === 0) {
+                    ElMessage.success("用户密码修改成功，请重新登录！")
+                    router.push({ name: "Login" })
+                }
+            }).finally(() => {
+                updatePwdVisible.value = false
+            })
+        }
+    }).catch((err) => {
         ElMessage.error("信息没有填写完整！")
-        throw err
+        return new Promise(() => { })
     })
-    const { data } = await getUpdateUserPwd(userUpdatePwdList).finally(() => {
-        updatePwdVisible.value = false
-    })
-    if (data.code === 0) {
-        ElMessage.success("用户密码修改成功，请重新登录！")
-        router.push({ name: "Login" })
-    }
+
+
 }
 </script>
 
@@ -79,7 +110,7 @@ const updateUserPwd = async (userPwdForm: FormInstance | undefined) => {
         <el-card style="min-width: 480px; margin-bottom: 10px;">
             <div class="user-hander">
                 <div class="user-img">
-                    <img src="../../assets/img/portrait.jpg" alt="">
+                    <el-avatar :src="getHeadImg" class="custom-avatar">{{ getHeadImg }}</el-avatar>
                 </div>
                 <div class="user-content">
                     <div class="user-name" style="font-size: 24px;">{{ userInfo.username }}</div>
@@ -191,10 +222,9 @@ const updateUserPwd = async (userPwdForm: FormInstance | undefined) => {
             </div>
 
         </el-card>
-
         <!-- 编辑信息 -->
-        <el-dialog v-model="updateVisible" title="编辑用户信息" min-width="500">
-            <el-form ref="userRef" :model="userInfo" :inline="true" label-width="100px" class="pro-apply-from">
+        <el-dialog v-model="updateVisible" title="编辑用户信息" width="780">
+            <el-form ref="userRef" :model="userInfo" :inline="true" label-width="80px" class="demo-form-inline">
                 <el-form-item label="用户名:" prop="username">
                     <el-input v-model="userInfo.username"></el-input>
                 </el-form-item>
@@ -205,13 +235,14 @@ const updateUserPwd = async (userPwdForm: FormInstance | undefined) => {
                     <el-input v-model="userInfo.sex"></el-input>
                 </el-form-item>
                 <el-form-item label="出生日期" prop="birthday">
-                    <el-date-picker type="date" placeholder="请选择日期" v-model="userInfo.birthday"></el-date-picker>
+                    <el-date-picker style="width: 250px;" type="date" placeholder="请选择日期"
+                        v-model="userInfo.birthday"></el-date-picker>
                 </el-form-item>
                 <el-form-item label="手机号" prop="phone">
                     <el-input v-model="userInfo.phone"></el-input>
                 </el-form-item>
                 <el-form-item label="个人简介" prop="remark">
-                    <el-input v-model="userInfo.remark" type="textarea"></el-input>
+                    <el-input v-model="userInfo.remark" type="textarea" style="width: 250px;"></el-input>
                 </el-form-item>
             </el-form>
             <template #footer>
@@ -223,18 +254,18 @@ const updateUserPwd = async (userPwdForm: FormInstance | undefined) => {
                 </div>
             </template>
         </el-dialog>
-
         <!-- 编辑用户密码 -->
         <el-dialog class="dialog-css" v-model="updatePwdVisible" title="修改用户密码" width="450">
-            <el-form ref="userPwdRef" :model="userUpdatePwdList" label-width="100px" class="pro-apply-from">
+            <el-form ref="userPwdRef" :rules="userPwdRules" :model="userUpdatePwdList" label-width="100px"
+                class="pro-apply-from">
                 <el-form-item label="旧密码:" prop="password">
-                    <el-input v-model="userUpdatePwdList.password" type="password" autocomplete="off"></el-input>
+                    <el-input v-model="userUpdatePwdList.password" type="password" show-password></el-input>
                 </el-form-item>
                 <el-form-item label="新密码:" prop="newPassword">
-                    <el-input v-model="userUpdatePwdList.newPassword" type="password" autocomplete="off"></el-input>
+                    <el-input v-model="userUpdatePwdList.newPassword" type="password" show-password></el-input>
                 </el-form-item>
                 <el-form-item label="确认新密码:" prop="againPassword">
-                    <el-input v-model="userUpdatePwdList.againPassword" type="password" autocomplete="off"></el-input>
+                    <el-input v-model="userUpdatePwdList.againPassword" type="password" show-password></el-input>
                 </el-form-item>
             </el-form>
             <template #footer>
@@ -268,9 +299,11 @@ const updateUserPwd = async (userPwdForm: FormInstance | undefined) => {
             justify-content: space-between;
             align-items: center;
 
-            img {
+            .el-avatar {
                 width: 100%;
-                border-radius: 50%;
+                height: 100%;
+                background-color: #000;
+                font-size: 80px;
             }
         }
 
@@ -348,5 +381,12 @@ const updateUserPwd = async (userPwdForm: FormInstance | undefined) => {
         padding: 0;
     }
 
+    .demo-form-inline .el-input {
+        --el-input-width: 250px;
+    }
+
+    .demo-form-inline .el-select {
+        --el-select-width: 250px;
+    }
 }
 </style>

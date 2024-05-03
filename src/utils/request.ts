@@ -23,22 +23,28 @@ request.interceptors.request.use((config) => {
 })
 
 //响应拦截器
-// request.interceptors.response.use((response) => response,async (error) => {
-//     if(error.response.status === 401) {
-//         //刷新token
-//        const {data} = await refreshToken()
-//        if(data.success) {
-//         // 保存新token
-//         useTokenStore().saveToken(data.content)
-//         // 重新请求之前的接口，并把结果返回
-//         return request(error.config)
-//        }else{
-//         // 跳转到login
-//         ElMessage.error('刷新token失败，需要重新登录')
-//         router.push({name:"login"})
-//         return
-//        }
-//     }
-//     return Promise.reject(error)
-// })
+request.interceptors.response.use((response) => response,async (error) => {
+    // console.log("1000 token过期请重新登陆");
+    console.log("response:",response);
+    console.log("error:",error);
+    
+    
+    // if(error.response.status === 401) {
+    //     //刷新token
+    //    const {data} = await refreshToken()
+
+    //    if(data.success) {
+    //     // 保存新token
+    //     useTokenStore().saveToken(data.content)
+    //     // 重新请求之前的接口，并把结果返回
+    //     return request(error.config)
+    //    }else{
+    //     // 跳转到login
+    //     ElMessage.error('刷新token失败，需要重新登录')
+    //     router.push({name:"login"})
+    //     return
+    //    }
+    // }
+    // return Promise.reject(error)
+})
 export default request

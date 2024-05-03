@@ -20,7 +20,6 @@ export const useTokenStore = defineStore("mytoken",() => {
     })
     //function 相当于 actions
     function saveToken(data: string) {
-
         tokenJson.value = data;
         window.localStorage.setItem("TokenInfo",data);
     }

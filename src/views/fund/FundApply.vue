@@ -40,14 +40,14 @@ const rules = reactive<FormRules<typeof fundForm>>({
     ],
 })
 
+//项目名称模糊搜索
 interface ListItem {
     label: string
     value: string
 }
-
 const loading = ref(false);
 const fundOption = ref<ListItem[]>([])
-//项目名称模糊搜索
+
 const FundremoteMethod = async (query: string) => {
     if (query.trim()) {
         loading.value = true
@@ -75,6 +75,7 @@ const submitForm = async (formEl: FormInstance | undefined) => {
 
     if (data.code === 0) {
         ElMessage.success("申请经费成功！")
+        formEl.resetFields()
     } else {
         throw new Error(`申请失败！`)
     }

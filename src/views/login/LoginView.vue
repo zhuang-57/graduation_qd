@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { reactive } from 'vue';
 import { FormInstance, FormRules } from 'element-plus';
+import { User } from "@element-plus/icons-vue"
+
 // 导入接口函数
 import { login, LoginInfo, RegisterInfo, getAcademyList, register } from '../../api/users';
 
@@ -39,12 +41,16 @@ const isButtonEnabled = computed(() => {
     return !form.username || !form.password;
 });
 
+// const getView = computed(() => {
+//     if()
+// })
+
 // 表单提交时进行校验
-const onSubmit = async (formE1: FormInstance | undefined) => {
-    if (!formE1) return
+const onSubmit = async (formRef: FormInstance | undefined) => {
+    if (!formRef) return
     isLoading.value = true;
     // 表单验证
-    await formRef.value?.validate().catch(err => {
+    await formRef.validate().catch(err => {
         ElMessage.error('表单验证失败......');
         isLoading.value = false
         throw err
@@ -56,9 +62,9 @@ const onSubmit = async (formE1: FormInstance | undefined) => {
         // 失败
 
         if (res.data.code !== 0) {
-            ElMessage.error("登录信息有误...");
+            ElMessage.error(res.data.msg);
             isLoading.value = false;
-            throw new Error("登录信息输入有误！");
+            throw new Error(res.data.msg);
         }
         // 成功
         return res.data.data;
@@ -83,11 +89,11 @@ const AcademyList = async () => {
 AcademyList()
 
 //用户注册
-const onRegister = async (formE1: FormInstance | undefined) => {
-    if (!formE1) return
+const onRegister = async (formRef: FormInstance | undefined) => {
+    if (!formRef) return
     isLoading.value = true;
     // 表单验证
-    await formRef.value?.validate((vaild, fields) => {
+    await formRef.validate((vaild, fields) => {
         if (vaild) {
             register(registerForm).then((res) => {
                 if (res.data.code !== 0) {
@@ -135,10 +141,11 @@ const rules = reactive<FormRules>({
             <el-form :model="form" :rules="rules" ref="formRef" size="large">
                 <h2 class="login-name">科研项目管理系统登录</h2>
                 <el-form-item prop="username" class="base-input">
-                    <el-input v-model="form.username" placeholder="用户名 (请输入真实姓名)" />
+                    <el-input v-model="form.username" placeholder="用户名 (请输入真实姓名)" :suffix-icon="User" />
                 </el-form-item>
                 <el-form-item prop="password" class="base-input">
-                    <el-input type="password" v-model="form.password" placeholder="密码" />
+                    <el-input type="password" v-model="form.password" placeholder="密码" show-password>
+                    </el-input>
                 </el-form-item>
                 <el-link style="margin-left: 180px;font-size: 12px;" type="primary"
                     @click="getRegister = !getRegister">没有注册？去注册</el-link>
@@ -152,7 +159,7 @@ const rules = reactive<FormRules>({
             <el-form :model="registerForm" :rules="rules" ref="formRef" size="large">
                 <h2 class="login-name">科研项目管理系统注册</h2>
                 <el-form-item prop="username" class="base-input">
-                    <el-input v-model="registerForm.username" placeholder="用户名 (请输入真实姓名)" />
+                    <el-input v-model="registerForm.username" placeholder="用户名 (请输入真实姓名)" :suffix-icon="User" />
                 </el-form-item>
                 <!-- todo: -->
                 <el-form-item prop="academyId" class="base-input">
@@ -161,7 +168,7 @@ const rules = reactive<FormRules>({
                     </el-select>
                 </el-form-item>
                 <el-form-item prop="password" class="base-input">
-                    <el-input type="password" v-model="registerForm.password" placeholder="密码" />
+                    <el-input type="password" v-model="registerForm.password" placeholder="密码" show-password />
                 </el-form-item>
                 <el-link style="margin-left: 200px;font-size: 12px;" type="primary"
                     @click="getRegister = !getRegister">已注册？去登录</el-link>
