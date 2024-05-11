@@ -1,19 +1,19 @@
 <script setup lang="ts">
 import { ArrowRight } from '@element-plus/icons-vue'
 import { isCollapse } from './isCollapse';
-import { getInfo, logout, UserList } from '../../api/users';
+import { getInfo, logout, UserList, getAcademyList } from '../../api/users';
 import { useRouter } from 'vue-router';
 import { useTokenStore } from '../../stores/mytoken';
 import { useUserStore } from "../../stores/users"
 const router = useRouter()
 const userInfo = ref<UserList>({ img: "", username: "" })
 
+//获取用户登录信息
 const getInfoLogin = async () => {
     const userStore = useUserStore()
     const { data } = await getInfo()
     if (data.code === 0) {
         userStore.loginSuccess(data.data)
-        console.log(userStore.userInfo);
 
         userInfo.value = data.data
     }
@@ -24,6 +24,14 @@ const getInfoLogin = async () => {
             { name: 'Login' }
         )
     }
+    // 将学院进行集中管理
+    await getAcademyList().then((res) => {
+        if (res.data.code === 0) {
+            userStore.AcademyList(res.data.data);
+        } else {
+            ElMessage.error(res.data.msg)
+        }
+    })
 
 }
 getInfoLogin()

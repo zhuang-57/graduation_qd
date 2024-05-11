@@ -10,22 +10,24 @@ type Common = {
 //Partial<applyOrEditMenu>(每一项都加入可选？) Pick<applyOrEditMenu,"id" | "name"> & {id?: number}---id可选-(将我想要的挑选出来)
 //Omit<applyOrEditMenu, "id" | "name">(将不要的去掉某几个)
 export type ProjectList = {
+    academyId:number,
+    endUrl:string,//结题链接
+    endtime:string,
     id:number,
-    userId:number
-    proName:string,
-    username:string,
-    status:string,
-    statusName:string,
     level:string,
-    academyId:string,
-    type:string,
-    teacherName:string,
-    teacherPhone:string,
-    member:string,
     link:string,
+    member:string,
+    middleCheckUrl:string, //中期检查链接
+    proName:string,
     remark:string,
     startime:string,
-    endtime:string,
+    status:string,
+    statusName:string,
+    teacherName:string,
+    teacherPhone:string,
+    type:string,
+    userId:number
+    username:string,
 }
 
 export type ProjectApplyList = Partial<ProjectList>;
@@ -40,7 +42,7 @@ export const getApplyPro = (menuInfo : ProjectApplyList) => {
 }
 
 //项目详情页面
-export type ProjectAuditingList = Pick<ProjectList,"id" | "proName" | "type" | "level" | "academyId" | "username" | "startTime" | "endTime" | "status">
+export type ProjectAuditingList = Pick<ProjectList,"id" | "proName" | "type" | "level" | "academyId" | "username" | "startTime" | "endTime" | "status" | "endUrl" | "middleCheckUrl">
 
 //查询条件
 export type ProCondition = {
@@ -85,6 +87,20 @@ export const getStatusAudit = (condition:StatusCondition) => {
     })
 }
 
+//中期-结题申请
+export type FileUrlList = {
+    id: number,
+    middleCheckUrl:string,
+    endUrl:string
+}
+export const getFileUrl = (condition:FileUrlList) => {
+    return request({
+        method:"POST",
+        url:"/project/uploadAttachment",
+        data:condition
+    })
+}
+
  export type EditMenuList = Pick<ProjectList, "id" | "proName" | "level" | "link" | "member" | "type" | "teacherName" | "teacherPhone" |"startime" | "endtime" | "remark" >
 //更新项目
 export const getProjectUpdate = (updateProjectItem:EditMenuList) => {
@@ -94,6 +110,7 @@ export const getProjectUpdate = (updateProjectItem:EditMenuList) => {
         data:updateProjectItem
     })
 }
+
 
 
 //删除

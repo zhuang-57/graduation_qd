@@ -3,7 +3,10 @@ import { reactive } from 'vue'
 import { getInfo, getUserInfoList, getUpdateUserInfo, PwdCondition, getUpdateUserPwd } from "../../api/users"
 import { FormInstance, FormRules } from 'element-plus';
 import { timeDayFormatter } from "../../utils/timeFormatter"
+import { useUserStore } from "../../stores/users"
 import router from "../../router/index"
+
+const userStore = useUserStore()
 //获取用户信息详情
 const userInfo = reactive<getUserInfoList>({
     academyId: 1,
@@ -48,12 +51,35 @@ getUserInfo()
 
 //获取头像
 const getHeadImg = computed(() => {
-    if (userInfo.img.trim()) {
+    if (userInfo.img) {
         return userInfo.img
     } else {
         return userInfo.username.charAt(userInfo.username.length - 1)
     }
 })
+
+//编辑头像
+const ImgVisible = ref(false)
+const handleFileSuccess = (response, file, fileList) => {
+    if (response.code === 0) {
+        userInfo.img = response.data.fileUrl;
+    } else {
+        ElMessage.error("文件上传失败！")
+        return new Error("文件上传失败！")
+    }
+}
+
+const onImgSubmit = async () => {
+    if (!userInfo?.img) return
+    const { data } = await getUpdateUserInfo(userInfo).finally(() => {
+        ImgVisible.value = false
+    })
+    if (data.code === 0) {
+        ElMessage.success("图片修改成功！")
+    } else {
+        ElMessage.error(data.msg)
+    }
+}
 
 //编辑信息
 const updateVisible = ref(false)
@@ -100,8 +126,15 @@ const updateUserPwd = async (userPwdForm: FormInstance | undefined) => {
         ElMessage.error("信息没有填写完整！")
         return new Promise(() => { })
     })
+}
 
-
+//图片上传
+const beforeImageUpload = (rawFile) => {
+    if (rawFile.size / 1024 / 1024 > 10) {
+        ElMessage.error("单张图片大小不能超过10MB!");
+        return false;
+    }
+    return true;
 }
 </script>
 
@@ -116,6 +149,7 @@ const updateUserPwd = async (userPwdForm: FormInstance | undefined) => {
                     <div class="user-name" style="font-size: 24px;">{{ userInfo.username }}</div>
                     <span>个人简介: {{ userInfo.remark === null ? "未填写" : userInfo.remark }}</span>
                     <div class="user-btn">
+                        <el-button round color="#ccc" @click="ImgVisible = true">编辑头像</el-button>
                         <el-button round color="#ccc" @click="updateVisible = true">编辑信息</el-button>
                         <el-button round color="#ccc" @click="updatePwdVisible = true">修改密码</el-button>
                     </div>
@@ -135,14 +169,6 @@ const updateUserPwd = async (userPwdForm: FormInstance | undefined) => {
                             <span>称：</span>
                         </div>
                         <div>{{ userInfo.username }}</div>
-                        <!-- <div class="icon-edit">
-                            <div class="icon-span">
-                                <el-icon>
-                                    <IEpEdit />
-                                </el-icon>
-                                <span>编辑</span>
-                            </div>
-                        </div> -->
                     </li>
                     <li class="info-item">
                         <div class="info-label">
@@ -202,7 +228,7 @@ const updateUserPwd = async (userPwdForm: FormInstance | undefined) => {
                             <span>名</span>
                             <span>称：</span>
                         </div>
-                        <div>{{ userInfo.academyId }}</div>
+                        <div>{{ userStore.academyInfo?.[userInfo.academyId - 1]?.acadName }}</div>
                     </li>
                     <li class="info-item">
                         <div class="info-label">
@@ -231,8 +257,11 @@ const updateUserPwd = async (userPwdForm: FormInstance | undefined) => {
                 <el-form-item label="用户id:" prop="id">
                     <el-input v-model="userInfo.id" disabled></el-input>
                 </el-form-item>
-                <el-form-item label="性别:" prop="sex">
-                    <el-input v-model="userInfo.sex"></el-input>
+                <el-form-item label="性别:" prop="sex" style="width: 330px;">
+                    <el-radio-group v-model="userInfo.sex">
+                        <el-radio label="男"></el-radio>
+                        <el-radio label="女"></el-radio>
+                    </el-radio-group>
                 </el-form-item>
                 <el-form-item label="出生日期" prop="birthday">
                     <el-date-picker style="width: 250px;" type="date" placeholder="请选择日期"
@@ -243,6 +272,20 @@ const updateUserPwd = async (userPwdForm: FormInstance | undefined) => {
                 </el-form-item>
                 <el-form-item label="个人简介" prop="remark">
                     <el-input v-model="userInfo.remark" type="textarea" style="width: 250px;"></el-input>
+                </el-form-item>
+                <el-form-item label="学历:" prop="educational">
+                    <el-select v-model="userInfo.educational" placeholder="请选择">
+                        <el-option label="小学" value="小学" />
+                        <el-option label="初学" value="初学" />
+                        <el-option label="高中" value="高中" />
+                        <el-option label="大专" value="大专" />
+                        <el-option label="大学本科" value="大学本科" />
+                        <el-option label="研究生" value="研究生" />
+                        <el-option label="博士" value="博士" />
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="专业:" prop="major">
+                    <el-input v-model="userInfo.major"></el-input>
                 </el-form-item>
             </el-form>
             <template #footer>
@@ -272,6 +315,39 @@ const updateUserPwd = async (userPwdForm: FormInstance | undefined) => {
                 <div class="dialog-footer">
                     <el-button @click="updatePwdVisible = false">取消</el-button>
                     <el-button type="primary" @click="updateUserPwd(userPwdRef)">
+                        确定
+                    </el-button>
+                </div>
+            </template>
+        </el-dialog>
+        <!-- 编辑头像 -->
+        <el-dialog v-model="ImgVisible">
+            <el-upload class="avatar-upload" action="http://127.0.0.1:5173/api/file/uploadFile" :show-file-list="false"
+                :on-success="handleFileSuccess" :before-upload="beforeImageUpload" list-type="picture" accept="image/*">
+                <el-image v-if="userInfo.img" :src="userInfo.img" fit="cover" class="img-background"></el-image>
+                <div v-else class="img-background">
+                    <el-icon class="el-icon--upload">
+                        <IEpUploadFilled />
+                    </el-icon>
+                </div>
+                <template #tip>
+                    <div class="el-upload__tip">只能上传图片,且单张图片大小不能超过10MB</div>
+                </template>
+            </el-upload>
+            <!-- <el-upload v-model="userInfo.img" class="upload-demo" drag :on-success="handleFileSuccess"
+                action="http://127.0.0.1:5173/api/file/uploadFile" multiple aria-required="true">
+                <el-icon class="el-icon--upload">
+                    <IEpUploadFilled />
+                </el-icon>
+                <div>点击上传图片</div>
+                <template #tip>
+                    <div> jpg/png文件小于500kb</div>
+                </template>
+            </el-upload> -->
+            <template #footer>
+                <div>
+                    <el-button @click="ImgVisible = false">取消</el-button>
+                    <el-button type="primary" @click="onImgSubmit">
                         确定
                     </el-button>
                 </div>
@@ -388,5 +464,29 @@ const updateUserPwd = async (userPwdForm: FormInstance | undefined) => {
     .demo-form-inline .el-select {
         --el-select-width: 250px;
     }
+}
+
+.avatar-upload {
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+
+    .img-background {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 300px;
+        height: 300px;
+        border-radius: 10px;
+        border: 1px dashed #444;
+
+        .el-icon--upload {
+            font-size: 100px;
+        }
+    }
+
+
 }
 </style>

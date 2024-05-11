@@ -1,13 +1,10 @@
 <script setup lang="ts">
-import { StatusCondition, getStatusAudit, ProCondition, GetPage, ProjectApplyList, GETPageList, EditMenuList, getProjectUpdate, getAllProMenu, DeleteProMsg } from "../../api/project"
+import { StatusCondition, getStatusAudit, ProCondition, GetPage, ProjectApplyList, GETPageList, EditMenuList, getProjectUpdate, getAllProMenu, DeleteProMsg, FileUrlList, getFileUrl } from "../../api/project"
 import { FormInstance, FormRules } from 'element-plus';
-import router from "../../router/index"
 import { timeFormatter } from "../../utils/timeFormatter"
 import { reactive } from 'vue';
 import { useUserStore } from "../../stores/users"
 const userStore = useUserStore()
-
-
 
 //分页查询条件
 const page = reactive<GetPage>(
@@ -48,6 +45,27 @@ const frontStatus = (query: string) => {
 
 //获取项目列表数据
 const ProMenus = ref([] as ProjectApplyList[])
+
+const ProMenusList = reactive<ProjectApplyList>({
+    academyId: 1,
+    endUrl: '',//结题链接
+    endtime: '',
+    id: 1,
+    level: '',
+    link: '',
+    member: '',
+    middleCheckUrl: '', //中期检查链接
+    proName: '',
+    remark: '',
+    startime: '',
+    status: '',
+    statusName: '',
+    teacherName: '',
+    teacherPhone: '',
+    type: '',
+    userId: 1,
+    username: ''
+})
 
 const getProjectMenus = async (proQuery: ProCondition) => {
     Object.assign(getPageQuery, proQuery);
@@ -143,8 +161,6 @@ const EditIsDisabled = (id: number) => {
 }
 
 //文件上传
-const FileList = ref([]);
-
 const beforeUpload = (file) => {
     const isListMaxSize = file.size / 1024 / 1024 < 10;
     if (!isListMaxSize) {
@@ -156,7 +172,7 @@ const beforeUpload = (file) => {
 
 const handleFileSuccess = (response, file, fileList) => {
     if (response.code === 0) {
-        updateProForm.link = response.data.newName;
+        updateProForm.link = response.data.fileUrl;
     } else {
         ElMessage.error("文件上传失败！")
         return new Error("文件上传失败！")
@@ -193,16 +209,24 @@ const BtnVisible = ref(true)
 
 //查看详情
 const visible = ref(false);
+//进度条状态值
+const activeBtn = ref(0)
+
 const handleCheck = (id: number) => {
     const getProItem = ProMenus.value.find((item) => item.id === id)
+    Object.assign(ProMenusList, getProItem)
     if (userStore.userInfo.roleId !== 3) {
         BtnVisible.value = false
-    } else if (getProItem.status === statusMap.REFUSE || getProItem.status === statusMap.END) {
+    } else if (ProMenusList.status === statusMap.REFUSE || ProMenusList.status === statusMap.END) {
         BtnVisible.value = false
     } else {
         BtnVisible.value = true
     }
-    Object.assign(updateProForm, getProItem);
+    if (getProItem.status === statusMap.WAIT_MIDDLE_CHECK || getProItem.status === statusMap.REFUSE) activeBtn.value = 0
+    if (getProItem.status === statusMap.WAIT_END) activeBtn.value = 1
+    if (getProItem.status === statusMap.END) activeBtn.value = 2
+
+    // Object.assign(updateProForm, getProItem);
     visible.value = true;
 }
 
@@ -228,10 +252,96 @@ const PassProReq = async (id: number) => {
     if (data.code === 0) {
         ElMessage.success("审核通过！")
         getProjectMenus(getPageQuery)
+        visible.value = false
         const getSuccessStatus = ProMenus.value.find((item) => item.id === id)
         if (getSuccessStatus.status === statusMap.WAIT_END) BtnVisible.value = false
     } else {
         ElMessage.error(data.msg)
+    }
+}
+
+// 附件提交请求属性
+const getFileReq = reactive<FileUrlList>({
+    id: 1,
+    middleCheckUrl: '',
+    endUrl: ''
+})
+
+//中期文件提交
+const handleFileUpload = (response, file, fileList) => {
+    if (response.code === 0) {
+        ProMenusList.middleCheckUrl = response.data.fileUrl;
+    } else {
+        ElMessage.error("文件上传失败！")
+        return new Error("文件上传失败！")
+    }
+}
+
+//中期检查提交按钮是否可用
+const getMiddleStatus = (id: number) => {
+    const getProItem = ProMenus.value.find((item) => item.id === id)
+    if (getProItem.statusName === statusMap.WAIT_MIDDLE_CHECK) {
+        return false
+    }
+    return true
+}
+
+//提交中期检查
+const middleVisible = ref(false)
+
+//打开中期检查弹窗
+// const getMiddleOpen = async (id: number) => {
+//     middleVisible.value = true
+// }
+//提交中期检查附件
+const onMiddleSubmit = async (id: number) => {
+    getFileReq.id = id;
+    getFileReq.middleCheckUrl = ProMenusList.middleCheckUrl
+    const { data } = await getFileUrl(getFileReq).finally(() => {
+        middleVisible.value = false
+    })
+    if (data.code === 0) {
+        ElMessage.success("中期检查材料提交成功！")
+    } else {
+        ElMessage.error(data.msg)
+        throw new Error("上传失败！");
+    }
+
+}
+
+//结题提交按钮是否可用
+const getEndStatus = (id: number) => {
+    const getProItem = ProMenus.value.find((item) => item.id === id)
+    if (getProItem.statusName === statusMap.WAIT_END) {
+        return false
+    }
+    return true
+}
+const EndVisible = ref(false);
+
+//结题文件提交
+const handleEndFileUpload = (response, file, fileList) => {
+    if (response.code === 0) {
+        ProMenusList.endUrl = response.data.fileUrl;
+    } else {
+        ElMessage.error("文件上传失败！")
+        return new Error("文件上传失败！")
+    }
+}
+
+//提交结题检查附件
+const onEndSubmit = async (id: number) => {
+    getFileReq.id = id;
+    getFileReq.endUrl = ProMenusList.endUrl
+    const { data } = await getFileUrl(getFileReq).finally(() => {
+        EndVisible.value = false
+    })
+    if (data.code === 0) {
+        ElMessage.success("结题材料提交成功！")
+    } else {
+        ElMessage.error(data.msg)
+        throw new Error("上传失败！");
+
     }
 }
 
@@ -251,7 +361,7 @@ const handleDelete = async (id: number) => {
     if (data.code === 0) {
         getAllProMenu(getPageQuery).then((res) => {
             ProMenus.value = res.data.data.data;
-            ElMessage.success("删除项目成功！");
+            ElMessage.success("项目删除成功！");
         })
     } else {
         ElMessage.error("删除项目失败！");
@@ -286,18 +396,23 @@ const options = [
                     <div class="card-input">
                         <span>输入搜索：</span>
                         <el-input v-model="getPageQuery.likeProjectName" style="width: 240px" type="text"
-                            placeholder="输入角色名" />
+                            placeholder="输入项目名" />
                     </div>
                 </el-card>
             </template>
             <el-table :data="ProMenus" border style="width: 100%">
-                <el-table-column prop="id" label="项目编号" width="120" align="center">
+                <el-table-column prop="id" label="项目编号" width="100" align="center">
                 </el-table-column>
-                <el-table-column prop="proName" label="项目名称" width="220" align="center">
+                <el-table-column prop="proName" label="项目名称" width="200" align="center">
                 </el-table-column>
-                <el-table-column prop="type" label="项目类别" width="150" align="center">
+                <el-table-column prop="type" label="项目类别" align="center">
                 </el-table-column>
                 <el-table-column prop="level" label="项目级别" align="center">
+                </el-table-column>
+                <el-table-column v-if="userStore?.userInfo?.roleId === 3" prop="academyId" label="所属学院" align="center">
+                    <template #default="scope">
+                        {{ userStore?.academyInfo?.[scope.row.academyId - 1]?.acadName || '未知学院' }}
+                    </template>
                 </el-table-column>
                 <el-table-column prop="startime" label="预期开始日期" :formatter="timeFormatter" width="180" align="center">
                 </el-table-column>
@@ -315,8 +430,16 @@ const options = [
                 </el-table-column>
                 <el-table-column fixed="right" label="操作" width="200" align="center" v-slot="scope">
                     <el-button @click="handleCheck(scope.row.id)" size="small">查看</el-button>
-                    <el-button v-if="userStore.userInfo.roleId !== 3" type="primary" size="small"
-                        :disabled="EditIsDisabled(scope.row.id)" @click="handleEditPro(scope.row.id)">编辑</el-button>
+                    <template v-if="EditIsDisabled(scope.row.id) === true">
+                        <el-tooltip class="box-item" effect="dark" content="编辑按钮已禁用" placement="bottom"><el-button
+                                v-if="userStore.userInfo.roleId !== 3" type="primary" size="small"
+                                :disabled="EditIsDisabled(scope.row.id)"
+                                @click="handleEditPro(scope.row.id)">编辑</el-button></el-tooltip>
+                    </template>
+                    <template v-else>
+                        <el-button v-if="userStore.userInfo.roleId !== 3" type="primary" size="small"
+                            :disabled="EditIsDisabled(scope.row.id)" @click="handleEditPro(scope.row.id)">编辑</el-button>
+                    </template>
                     <el-button type="danger" size="small" @click="handleDelete(scope.row.id)">删除</el-button>
                 </el-table-column>
             </el-table>
@@ -332,43 +455,85 @@ const options = [
         <!-- 侧边栏展示 -->
         <el-drawer v-model="visible" class="drawer-content" title="项目详情：" direction="rtl" size="30%">
             <div class="drawer-btn" v-if="BtnVisible">
-                <el-button type="danger" plain @click="RejectProReq(updateProForm.id)">驳回申请</el-button>
-                <el-button type="success" plain @click="PassProReq(updateProForm.id)"> 审核通过
+                <el-button type="danger" plain @click="RejectProReq(ProMenusList.id)">驳回申请</el-button>
+                <el-button type="success" plain @click="PassProReq(ProMenusList.id)"> 审核通过
                 </el-button>
             </div>
 
             <el-card style=" max-width: 480px" shadow="never">
                 <ul>
-                    <li class="drawer-item">项目编号：{{ updateProForm.id }}</li>
-                    <li class="drawer-item">项目名称：{{ updateProForm.proName }}</li>
-                    <li class="drawer-item">项目级别：{{ updateProForm.level }}</li>
-                    <li class="drawer-item">项目类型：{{ updateProForm.type }}</li>
-                    <li class="drawer-item">指导老师名称：{{ updateProForm.teacherName }}</li>
-                    <li class="drawer-item">指导老师手机号：{{ updateProForm.teacherPhone }}</li>
-                    <li class="drawer-item">项目成员：{{ updateProForm.member }}</li>
-                    <li class="drawer-item">开始时间：{{ timeFormatter(undefined, undefined, updateProForm.startime) }}</li>
-                    <li class="drawer-item">结束时间：{{ timeFormatter(undefined, undefined, updateProForm.endtime) }}</li>
-                    <li class="drawer-item">备注：{{ updateProForm.remark }}</li>
-                    <li class="drawer-item">项目附件：<a :href="updateProForm.link">下载附件</a></li>
+                    <li class="drawer-item">项目编号：{{ ProMenusList.id }}</li>
+                    <li class="drawer-item">项目名称：{{ ProMenusList.proName }}</li>
+                    <li class="drawer-item">项目级别：{{ ProMenusList.level }}</li>
+                    <li class="drawer-item">项目类型：{{ ProMenusList.type }}</li>
+                    <li class="drawer-item">指导老师名称：{{ ProMenusList.teacherName }}</li>
+                    <li class="drawer-item">指导老师手机号：{{ ProMenusList.teacherPhone }}</li>
+                    <li class="drawer-item">项目成员：{{ ProMenusList.member }}</li>
+                    <li class="drawer-item">开始时间：{{ timeFormatter(undefined, undefined, ProMenusList.startime) }}</li>
+                    <li class="drawer-item">结束时间：{{ timeFormatter(undefined, undefined, ProMenusList.endtime) }}</li>
+                    <li class="drawer-item">备注：{{ ProMenusList.remark }}</li>
+                    <li class="drawer-item">项目附件：<a :href="ProMenusList.link">下载附件</a></li>
                 </ul>
             </el-card>
 
-            <el-card style="margin-top:20px " shadow="never">
-                <div style="height: 160px; max-width: 600px">
-                    <el-steps direction="vertical" :active="1" finish-status="success">
-                        <el-step title="提交中期检查材料">
-                            <template #description>
-                                <el-button type="primary" plain>提交附件</el-button>
-                            </template>
-                        </el-step>
-                        <el-step title="提交结题材料">
-                            <template #description>
-                                <el-button type="primary" plain>提交附件</el-button>
-                            </template>
-                        </el-step>
-                    </el-steps>
-                </div>
-            </el-card>
+            <!-- 提交中期、结题附件 -->
+            <template v-if="ProMenusList.statusName !== statusMap.WAIT_AUDIT">
+                <el-card v-if="userStore.userInfo.roleId !== 3" style="margin-top:20px " shadow="never">
+                    <div style="height: 160px; max-width: 600px">
+                        <el-steps direction="vertical" :active="activeBtn" finish-status="success">
+                            <el-step title="提交中期检查材料">
+                                <template #description>
+                                    <el-button type="primary" plain :disabled="getMiddleStatus(ProMenusList.id)"
+                                        @click="middleVisible = true">提交附件</el-button>
+                                    <!-- <span v-if="ProMenusList.status === statusMap.REFUSE"></span>
+                                    <span v-else-if="ProMenusList.middleCheckUrl">(已提交)</span>
+                                    <span v-else>(未提交)</span> -->
+                                </template>
+                            </el-step>
+                            <el-step title="提交结题材料">
+                                <template #description>
+                                    <el-button type="primary" plain :disabled="getEndStatus(ProMenusList.id)"
+                                        @click="EndVisible = true">提交附件 </el-button>
+                                    <!-- <span v-if="ProMenusList.status === statusMap.REFUSE"></span>
+                                    <span v-else-if="ProMenusList.endUrl">(已提交)</span>
+                                    <span v-else>(未提交)</span> -->
+                                </template>
+                            </el-step>
+                        </el-steps>
+                    </div>
+                </el-card>
+            </template>
+
+            <!-- 下载中期、结题附件 -->
+            <template v-if="ProMenusList.statusName !== statusMap.WAIT_AUDIT">
+                <el-card v-if="userStore.userInfo.roleId === 3" style="margin-top:20px " shadow="never">
+                    <div style="height: 160px; max-width: 600px">
+                        <el-steps direction="vertical" :active="activeBtn" finish-status="success">
+                            <el-step title="审核中期检查材料">
+                                <template #description>
+                                    <el-button type="text" :disabled="getMiddleStatus(ProMenusList.id)"><a
+                                            :href="ProMenusList.middleCheckUrl">中期检查材料附件</a></el-button>
+                                    <!-- <span v-if="ProMenusList.status === statusMap.REFUSE"></span> -->
+                                    <!-- <span v-else-if="ProMenusList.middleCheckUrl">(已提交)</span> -->
+                                    <span v-if="ProMenusList.middleCheckUrl">(已提交)</span>
+                                    <span v-else>(未提交)</span>
+                                </template>
+                            </el-step>
+                            <el-step title="审核结题材料">
+                                <template #description>
+                                    <el-button type="text" :disabled="getEndStatus(ProMenusList.id)"><a
+                                            :href="ProMenusList.endUrl">结题材料附件</a></el-button>
+
+                                    <!-- <span v-if="ProMenusList.status === statusMap.REFUSE"></span> -->
+                                    <!-- <span v-else-if="ProMenusList.endUrl">(已提交)</span> -->
+                                    <span v-if="ProMenusList.endUrl">(已提交)</span>
+                                    <span v-else>(未提交)</span>
+                                </template>
+                            </el-step>
+                        </el-steps>
+                    </div>
+                </el-card>
+            </template>
         </el-drawer>
         <!-- 编辑弹窗 -->
         <el-dialog v-model="updateVisible" title="编辑项目信息" width="870">
@@ -425,7 +590,7 @@ const options = [
 
             </el-form>
             <template #footer>
-                <div class="dialog-footer">
+                <div>
                     <el-button @click="updateVisible = false">取消</el-button>
                     <el-button type="primary" @click="onSubmit(proRuleRef)">
                         确定
@@ -433,6 +598,53 @@ const options = [
                 </div>
             </template>
         </el-dialog>
+
+        <!-- 上传中期附件-->
+        <el-dialog v-model="middleVisible" title="上传附件信息">
+            <el-upload v-model="ProMenusList.middleCheckUrl" drag :on-success="handleFileUpload"
+                action="http://127.0.0.1:5173/api/file/uploadFile" multiple aria-required="true">
+                <el-icon class="el-icon--upload">
+                    <IEpUploadFilled />
+                </el-icon>
+                <div> 将文件拖到此处，或 <em>点击上传</em></div>
+                <template #tip>
+                    <div> jpg/png文件小于500kb</div>
+                </template>
+            </el-upload>
+            <template #footer>
+                <div>
+                    <el-button @click="middleVisible = false">取消</el-button>
+                    <el-button type="primary" @click="onMiddleSubmit(ProMenusList.id)">
+                        确定
+                    </el-button>
+                </div>
+            </template>
+        </el-dialog>
+
+        <!-- 上传结题附件-->
+        <el-dialog v-model="EndVisible" title="上传附件信息">
+            <el-upload v-model="ProMenusList.endUrl" drag :on-success="handleEndFileUpload"
+                action="http://127.0.0.1:5173/api/file/uploadFile" multiple aria-required="true">
+                <el-icon class="el-icon--upload">
+                    <IEpUploadFilled />
+                </el-icon>
+                <div> 将文件拖到此处，或 <em>点击上传</em></div>
+                <template #tip>
+                    <div> jpg/png文件小于500kb</div>
+                </template>
+            </el-upload>
+            <template #footer>
+                <div>
+                    <el-button @click="EndVisible = false">取消</el-button>
+                    <el-button type="primary" @click="onEndSubmit(ProMenusList.id)">
+                        确定
+                    </el-button>
+                </div>
+            </template>
+        </el-dialog>
+
+
+
     </div>
 </template>
   
@@ -472,11 +684,11 @@ const options = [
     .drawer-item {
         padding-bottom: 20px;
         color: #72767b;
-
-        a {
-            text-decoration: none;
-        }
     }
+}
+
+a {
+    text-decoration: none;
 }
 
 .drawer-btn {

@@ -13,7 +13,7 @@ const page = reactive<GetPage>(
     }
 )
 const getPageQuery = reactive<UserCondition>({
-    likeUserName: '',
+    likeUsername: '',
     page
 })
 
@@ -101,8 +101,8 @@ const handleEditUser = async (id: number) => {
 
 //重置内容
 const resetContent = async () => {
-    if (getPageQuery.likeUserName.trim()) {
-        getPageQuery.likeUserName = "";
+    if (getPageQuery.likeUsername.trim()) {
+        getPageQuery.likeUsername = "";
     }
 }
 
@@ -126,6 +126,7 @@ const onSubmit = async (userForm: FormInstance | undefined) => {
 
 
     if (data.code === 0) {
+        ElMessage.success("修改用户角色成功！");
         getUserMenus(getPageQuery)
     } else {
         ElMessage.error(data.msg)
@@ -175,7 +176,7 @@ const handleDelete = async (id: number) => {
                         </div>
                         <div class="card-input">
                             <span>输入搜索：</span>
-                            <el-input v-model="getPageQuery.likeUserName" style="width: 240px" type="text"
+                            <el-input v-model="getPageQuery.likeUsername" style="width: 240px" type="text"
                                 placeholder="输入用户名" />
                         </div>
                     </el-card>

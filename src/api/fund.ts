@@ -24,7 +24,7 @@ export type FundList = {
 export type FundItemMenu = Pick<FundList, "proId" | "fund" | "remark" | "account">
 
 export const getFundApply = (menuInfo : FundItemMenu) => {
-    return request<Common<boolean>>({
+    return request({
         method:"POST",
         url:"/fund/apply",
         data:menuInfo,

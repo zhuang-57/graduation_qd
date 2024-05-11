@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import {ref} from 'vue'
+import {reactive, ref} from 'vue'
 
 interface UserList {
     academyId:number,
@@ -17,15 +17,22 @@ interface UserList {
     sex:string,
 }
 
+// 逆向映射函数
+ type AcademyMap = {
+  id:number,
+  acadName:string
+};
+
 export const useUserStore = defineStore('user', () =>{
     const userInfo = ref<UserList | null>(null);
+    const academyInfo = ref<AcademyMap | null>(null);
    
       function loginSuccess(newUserInfo:UserList) {
         userInfo.value = newUserInfo
       }
-      // function logout() {
-      //   this.userInfo = null
-      // },
+      function AcademyList(academy:AcademyMap) {
+        academyInfo.value = academy
+      }
 
-      return {userInfo, loginSuccess}
+      return {userInfo, loginSuccess,academyInfo,AcademyList}
   })

@@ -44,6 +44,7 @@ const rules = reactive<FormRules<typeof fundForm>>({
 interface ListItem {
     label: string
     value: string
+    disabled: boolean
 }
 const loading = ref(false);
 const fundOption = ref<ListItem[]>([])
@@ -56,7 +57,9 @@ const FundremoteMethod = async (query: string) => {
             loading.value = false
         })
         fundOption.value = data.data.data.map((item) => {
-            return { label: item.proName, value: item.id }
+            let dis = true
+            if (item.status === "WAIT_MIDDLE_CHECK" || item.status === "WAIT_END") dis = false
+            return { label: item.proName, value: item.id, disabled: dis }
         })
     }
 
@@ -71,12 +74,13 @@ const submitForm = async (formEl: FormInstance | undefined) => {
         return err
     })
     const { data } = await getFundApply(fundForm.value);
-    console.log(data);
+    // console.log(data);
 
     if (data.code === 0) {
         ElMessage.success("申请经费成功！")
         formEl.resetFields()
     } else {
+        ElMessage.error(data.msg)
         throw new Error(`申请失败！`)
     }
 }
@@ -97,8 +101,9 @@ const resetForm = (formEl: FormInstance | undefined) => {
                 status-icon>
                 <el-form-item label="项目名称：" prop="proId">
                     <el-select v-model="fundForm.proId" clearable filterable remote reserve-keyword placeholder="请输入内容"
-                        :remote-method="FundremoteMethod" :loading="loading" style="width: 240px">
-                        <el-option v-for="item in fundOption" :key="item.value" :label="item.label" :value="item.value" />
+                        :remote-method="FundremoteMethod" :loading="loading" style="width: 620px">
+                        <el-option v-for="item in fundOption" :key="item.value" :label="item.label" :value="item.value"
+                            :disabled="item.disabled" />
                     </el-select>
                 </el-form-item>
                 <el-form-item label="申请金额(单位/元)：" prop="fund">

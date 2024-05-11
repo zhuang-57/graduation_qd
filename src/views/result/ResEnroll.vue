@@ -1,45 +1,97 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
 import type { FormInstance, FormRules } from 'element-plus'
-import { FundItemMenu, getFundApply } from "../../api/fund"
+import { ResultApply, ResultList, getResultApply } from "../../api/result"
+import { getAllProMenu, GetPage, ProCondition } from "../../api/project";
+import router from "../../router/index"
 
 const ruleFormRef = ref<FormInstance>()
 
-const fundForm = ref<FundItemMenu>({
-    id: '',
-    name: '',
-    money: 0,
-    book: '',
+const resultList = reactive<ResultList>({
+    id: 1,
+    userId: 1,
+    academyId: null,
+    proName: '',
+    remark: '',
+    resultType: '',
+    createTime: '',
+    status: ''
 })
 
-const rules = reactive<FormRules<typeof fundForm>>({
-    id: [
-        { required: true, message: '请输入项目ID', trigger: 'blur' },
+const resultApplyList = reactive<ResultApply>({
+    projectId: null,
+    proName: '',
+    resultType: '',
+    remark: ''
+})
+
+const rules = reactive<FormRules<typeof resultApplyList>>({
+    projectId: [
+        { required: true, message: '请输入关联项目', trigger: 'blur' },
     ],
-    name: [
-        { required: true, message: '请输入项目名称', trigger: 'blur' },
+    resultType: [
+        { required: true, message: '请选择关联类型', trigger: 'change' },
     ],
-    money: [
-        { required: true, message: '请输入申请金额', trigger: 'blur' },
-    ],
-    book: [
+    remark: [
         { required: true, message: '请填写项目备注', trigger: 'blur' },
     ],
 })
 
-const submitForm = async (formEl: FormInstance | undefined) => {
-    if (!formEl) return
-    const { data } = await getFundApply(fundForm.value);
+//分页查询条件
+const page = reactive<GetPage>(
+    {
+        pageNo: 1,
+        pageSize: 5
+    }
+)
+const getPageQuery = reactive<ProCondition>({
+    likeProjectName: '',
+    page
+})
 
-    await formEl.validate((valid, fields) => {
-        if (valid && data.code === '000000') {
-            ElMessage.success("申请经费成功！")
-        } else {
-            throw new Error(`申请失败！${fields}`)
-        }
-    })
+//项目名称模糊搜索
+interface ListItem {
+    label: string
+    value: string
+    disabled: boolean
+}
+const loading = ref(false);
+const fundOption = ref<ListItem[]>([])
+const FundremoteMethod = async (query: string) => {
+    if (query.trim()) {
+        loading.value = true
+        getPageQuery.likeProjectName = query
+        const { data } = await getAllProMenu(getPageQuery).finally(() => {
+            loading.value = false
+        })
+        fundOption.value = data.data.data.map((item) => {
+            let dis = false
+            if (item.status !== "END") dis = true
+            return { label: item.proName, value: item.id, disabled: dis }
+        })
+    }
 }
 
+//提交申请
+const submitForm = async (formEl: FormInstance | undefined) => {
+    if (!formEl) return
+    await formEl.validate().catch((err) => {
+        ElMessage.error("申请成果失败！");
+        return err
+    })
+    const { data } = await getResultApply(resultApplyList);
+    if (data.code === 0) {
+        ElMessage.success("申请经费成功！")
+        router.push({ name: "ResAuditing" })
+        // formEl.resetFields()
+    } else {
+        ElMessage.error(data.msg)
+        throw new Error(`申请失败！`)
+    }
+
+}
+
+//重置
 const resetForm = (formEl: FormInstance | undefined) => {
     if (!formEl) return
     formEl.resetFields()
@@ -52,19 +104,27 @@ const resetForm = (formEl: FormInstance | undefined) => {
             成果申请
         </div>
         <div class="content">
-            <el-form ref="ruleFormRef" style="max-width: 770px" label-width="auto" :model="fundForm" :rules="rules"
+            <el-form ref="ruleFormRef" style="max-width: 770px" label-width="auto" :model="resultApplyList" :rules="rules"
                 status-icon>
-                <el-form-item label="项目编号：" prop="id">
-                    <el-input v-model="fundForm.id"></el-input>
+                <el-form-item label="关联项目" prop="projectId">
+                    <el-select v-model="resultApplyList.projectId" clearable filterable remote reserve-keyword
+                        placeholder="请输入内容" :remote-method="FundremoteMethod" :loading="loading" style="width: 702px">
+                        <el-option v-for="item in fundOption" :key="item.value" :label="item.label" :value="item.value"
+                            :disabled="item.disabled" />
+                    </el-select>
                 </el-form-item>
-                <el-form-item label="项目名称：" prop="name">
-                    <el-input v-model="fundForm.name"></el-input>
+                <el-form-item label="类型:" prop="resultType">
+                    <el-select v-model="resultApplyList.resultType" placeholder="请选择" style="width: 702px">
+                        <el-option label="课题" value="TOPIC" />
+                        <el-option label="软著" value="BOOK" />
+                        <el-option label="专利" value="PATENT" />
+                        <el-option label="论文" value="PAPER" />
+                        <el-option label="著作" value="WRITINGS" />
+                    </el-select>
                 </el-form-item>
-                <el-form-item label="成果申请：" prop="money">
-                    <el-input v-model="fundForm.money"></el-input>
-                </el-form-item>
-                <el-form-item label="备注" prop="book">
-                    <el-input v-model="fundForm.book" type="textarea"></el-input>
+
+                <el-form-item label="备注:" prop="remark">
+                    <el-input v-model="resultApplyList.remark" type="textarea"></el-input>
                 </el-form-item>
                 <el-form-item>
                     <div class="btn-add">

@@ -115,7 +115,7 @@ export type GetPage = {
 }
 
 export type UserCondition = Partial<{
-    likeUserName:string
+    likeUsername:string
     page:GetPage
 }>
 

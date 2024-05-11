@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive } from 'vue';
+import { reactive, computed } from 'vue';
 import { FormInstance, FormRules } from 'element-plus';
 import { User } from "@element-plus/icons-vue"
 
@@ -23,15 +23,15 @@ const getRegister = ref(false);
 
 //登录表格
 const form = reactive<LoginInfo>({
-    username: '向建南',
-    password: '111111',
+    username: '',
+    password: '',
 })
 
 //注册表格
 const registerForm = reactive<RegisterInfo>({
     username: '',
     password: '',
-    academyId: 1,
+    academyId: null,
 })
 
 // 防止多次重复点击按钮
@@ -41,9 +41,9 @@ const isButtonEnabled = computed(() => {
     return !form.username || !form.password;
 });
 
-// const getView = computed(() => {
-//     if()
-// })
+const isButtonRegister = computed(() => {
+    return !registerForm.username || !registerForm.password || !registerForm.academyId
+})
 
 // 表单提交时进行校验
 const onSubmit = async (formRef: FormInstance | undefined) => {
@@ -83,8 +83,14 @@ const AcademyMenus = ref();
 //获取学院列表数据
 const AcademyList = async () => {
     const { data } = await getAcademyList();
-    AcademyMenus.value = data.data
+    if (data.code === 0) {
+        AcademyMenus.value = data.data
+    } else {
+        ElMessage.error(data.msg)
+    }
+
 }
+
 
 AcademyList()
 
@@ -173,8 +179,8 @@ const rules = reactive<FormRules>({
                 <el-link style="margin-left: 200px;font-size: 12px;" type="primary"
                     @click="getRegister = !getRegister">已注册？去登录</el-link>
                 <el-form-item>
-                    <el-button color="#FC5531" @click="onRegister(formRef)" :loading="isLoading" :disabled="isButtonEnabled"
-                        class="submit-btn">注册</el-button>
+                    <el-button color="#FC5531" @click="onRegister(formRef)" :loading="isLoading"
+                        :disabled="isButtonRegister" class="submit-btn">注册</el-button>
                 </el-form-item>
             </el-form>
         </div>

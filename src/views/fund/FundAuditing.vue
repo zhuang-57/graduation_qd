@@ -93,7 +93,7 @@ const fundAuditForm = reactive<AuditFundCondition>({
 
 // 同意经费申请
 const passFundReq = async (id: number) => {
-    await ElMessageBox.confirm("确定要同意经费申请吗？", "经费提示：", {
+    await ElMessageBox.confirm("确定要同意经费申请吗？", "消息提示：", {
         confirmButtonText: "确定",
         cancelButtonText: "取消"
     }).catch(() => {
@@ -122,7 +122,7 @@ const getBtnUse = (id: number) => {
 
 // 拒绝经费申请
 const rejectFundReq = async (id: number) => {
-    await ElMessageBox.confirm("确定要拒绝经费申请吗？", "经费提示：", {
+    await ElMessageBox.confirm("确定要拒绝经费申请吗？", "消息提示：", {
         confirmButtonText: "确定",
         cancelButtonText: "取消"
     }).catch(() => {
@@ -141,13 +141,13 @@ const rejectFundReq = async (id: number) => {
     }
 }
 
-//撤回项目
+//撤回经费申请
 const handleCancel = async (id: string) => {
-    await ElMessageBox.confirm("确定要撤回申请经费信息吗？", "撤回提示：", {
+    await ElMessageBox.confirm("确定要撤回申请经费信息吗？", "消息提示：", {
         confirmButtonText: "确定",
         cancelButtonText: "取消"
     }).catch(() => {
-        ElMessage.info('撤回经费信息被取消！');
+        ElMessage.info('撤回经费信息报错！');
         return new Promise(() => { })
     })
 
@@ -157,7 +157,7 @@ const handleCancel = async (id: string) => {
         ElMessage.success("撤回经费信息成功！");
         getFundMenus(getPageQuery);
     } else {
-        ElMessage.error("撤回经费失败！");
+        ElMessage.error(data.msg);
     }
 }
 </script>
@@ -180,7 +180,7 @@ const handleCancel = async (id: string) => {
                     </div>
                     <div class="card-input">
                         <span>输入搜索：</span>
-                        <el-input v-model="getPageQuery.proName" style="width: 240px" type="text" placeholder="输入角色名" />
+                        <el-input v-model="getPageQuery.proName" style="width: 240px" type="text" placeholder="输入项目名" />
                     </div>
                 </el-card>
             </template>
@@ -205,6 +205,8 @@ const handleCancel = async (id: string) => {
                 </el-table-column>
                 <el-table-column prop="createTime" :formatter="timeFormatter" label="申请日期" align="center">
                 </el-table-column>
+                <el-table-column prop="remark" label="备注" align="center">
+                </el-table-column>
                 <el-table-column prop="status" label="状态" width="120" align="center">
                     <template #default="scope">
                         <el-tag
@@ -213,8 +215,7 @@ const handleCancel = async (id: string) => {
                             }}</el-tag>
                     </template>
                 </el-table-column>
-                <el-table-column prop="remark" label="备注" align="center">
-                </el-table-column>
+
                 <el-table-column fixed="right" label="操作" width="200" align="center" v-slot="scope">
                     <el-button v-if="userStore.userInfo.roleId === 3" type="success" size="small"
                         @click="passFundReq(scope.row.id)" :disabled="getBtnUse(scope.row.id)">同意</el-button>

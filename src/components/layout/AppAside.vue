@@ -54,18 +54,29 @@ const userStore = useUserStore()
               <IEpGoldMedal />
             </el-icon> <span>成果管理</span>
           </template>
-          <el-menu-item index="/res-enroll">
+          <!-- <el-menu-item index="/res-enroll">
             <el-icon>
               <IEpBox />
             </el-icon> <span>申请成果</span>
-          </el-menu-item>
+          </el-menu-item> -->
           <el-menu-item index="/res-auditing">
             <el-icon>
               <IEpTrophyBase />
             </el-icon> <span>成果列表</span>
           </el-menu-item>
+          <el-menu-item index="/res-chart">
+            <el-icon>
+              <IEpDataLine />
+            </el-icon> <span>成果分析</span>
+          </el-menu-item>
         </el-sub-menu>
-        <el-sub-menu index="4" v-if="userStore.userInfo?.roleId === 3">
+        <el-menu-item index="/user-power" v-if="userStore.userInfo?.roleId === 3">
+          <el-icon>
+            <IEpOperation />
+          </el-icon>
+          <span>用户管理</span>
+        </el-menu-item>
+        <!-- <el-sub-menu index="4" v-if="userStore.userInfo?.roleId === 3">
           <template #title>
             <el-icon>
               <IEpOperation />
@@ -81,11 +92,7 @@ const userStore = useUserStore()
               <IEpUser />
             </el-icon> <span>用户管理</span>
           </el-menu-item>
-        </el-sub-menu>
-
-
-
-
+        </el-sub-menu> -->
       </el-menu>
     </el-scrollbar>
   </el-aside>

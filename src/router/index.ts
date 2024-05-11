@@ -86,6 +86,12 @@ const router = createRouter({
         meta: { title:"成果列表"},
         component:() => import('@/views/result/ResAuditing.vue')
       },
+      {
+        path:'/res-chart',
+        name:'ResChart',
+        meta: { title:"成果统计"},
+        component:() => import('@/views/result/ResChart.vue')
+      },
       ]
     },
     {

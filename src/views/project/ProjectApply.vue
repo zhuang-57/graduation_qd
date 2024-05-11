@@ -11,7 +11,7 @@ const ruleForm = reactive<ProjectApplyList>({
     type: '',
     teacherName: '',
     teacherPhone: '',
-    academyId: '',
+    academyId: null,
     member: '',
     startime: '',
     endtime: '',
@@ -83,16 +83,16 @@ const rules = reactive<FormRules<ProjectApplyList>>({
 
 
 //文件上传
-const FileList = ref([]);
+// const FileList = ref([]);
 
-const beforeUpload = (file) => {
-    const isListMaxSize = file.size / 1024 / 1024 < 10;
-    if (!isListMaxSize) {
-        ElMessage.error('文件上传大小不能超过10MB！');
-        return false;
-    }
-    return true;
-}
+// const beforeUpload = (file) => {
+//     const isListMaxSize = file.size / 1024 / 1024 < 10;
+//     if (!isListMaxSize) {
+//         ElMessage.error('文件上传大小不能超过10MB！');
+//         return false;
+//     }
+//     return true;
+// }
 
 const handleFileSuccess = (response, file, fileList) => {
     if (response.code === 0) {
@@ -134,8 +134,6 @@ const submitForm = async (formList: FormInstance | undefined) => {
         ElMessage.success("申请项目成功！")
         router.push({ name: "ProAuditing" })
     }
-
-
 }
 
 //重置
